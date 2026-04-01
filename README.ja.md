@@ -2,9 +2,11 @@
 
 [English](./README.md) | [日本語](./README.ja.md)
 
+[![npm](https://img.shields.io/npm/v/typespacing.svg)](https://www.npmjs.com/package/typespacing)
 [![Live Demo](https://img.shields.io/badge/demo-live-0a66ff?style=flat-square)](https://cyocun.github.io/typespacing/)
 [![GitHub Pages](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml/badge.svg)](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)](./LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/cyocun)
 
 **Webの文字組みを、もっと直感的に。**
 
@@ -240,6 +242,11 @@ npm run demo
 ```bash
 npx playwright install
 ```
+
+## Support
+
+> [!TIP]
+> このツールが役に立ったら、応援いただけると励みになります — [buy me a coffee!](https://ko-fi.com/cyocun)
 
 ## License
 
