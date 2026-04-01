@@ -5,8 +5,30 @@ import { createTour } from './tour'
 import { buildTutorialSteps, simulateCmdK, TUTORIAL_DONE_KEY } from './tutorial'
 
 type PersistedArea = { text: string; kerning: number[]; indent: number; font: { family: string; weight: string; size: string } }
+type SelectOption = { value: string; text: string }
+type ChoicesOption = { value: string; label: string; selected?: boolean; disabled?: boolean }
+type ChoicesSettings = {
+  searchEnabled?: boolean
+  shouldSort?: boolean
+  shouldSortItems?: boolean
+  searchFields?: string[]
+  itemSelectText?: string
+  allowHTML?: boolean
+  searchResultLimit?: number
+  renderChoiceLimit?: number
+}
+type ChoicesInstance = {
+  setChoices: (choices: ChoicesOption[], value?: string, label?: string, replaceChoices?: boolean) => void
+  setChoiceByValue: (value: string) => void
+  clearStore: () => void
+}
+type ChoicesConstructor = new (el: HTMLSelectElement, settings: ChoicesSettings) => ChoicesInstance
 
 const IMPORTED_KEY = 'visual-kerning-editor-imported'
+const Choices = (window as unknown as { Choices?: ChoicesConstructor }).Choices
+if (!Choices) {
+  throw new Error('Choices.js is not loaded')
+}
 
 function areasToPersistedMap(areas: typeof kerningData.areas): Record<string, PersistedArea> {
   const persisted: Record<string, PersistedArea> = {}
@@ -96,6 +118,21 @@ const GOOGLE_FONTS = [
   'Archivo', 'Sora', 'Outfit', 'Barlow', 'Barlow Condensed',
   'Crimson Text', 'Fraunces', 'Bricolage Grotesque',
 ]
+const GOOGLE_FONTS_URL = new URL('./google-fonts.json', import.meta.url).toString()
+
+const DEFAULT_LOCAL_FONTS = [
+  'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto',
+  'Helvetica', 'Helvetica Neue', 'Arial', 'Noto Sans', 'Noto Sans JP',
+  'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Hiragino Mincho ProN',
+  'Yu Gothic', 'YuGothic', 'Meiryo', 'MS PGothic', 'MS Mincho',
+  'Avenir', 'Avenir Next', 'Avenir Next Condensed', 'Futura', 'Gill Sans',
+  'Optima', 'Palatino', 'Hoefler Text', 'Baskerville', 'Didot', 'Georgia',
+  'Times', 'Times New Roman', 'American Typewriter', 'Copperplate',
+  'Chalkboard', 'Chalkboard SE', 'Chalkduster', 'Marker Felt', 'Noteworthy',
+  'Apple SD Gothic Neo', 'AppleGothic', 'Apple Color Emoji',
+  'SF Pro Text', 'SF Pro Display', 'SF Pro Rounded', 'SF Mono',
+  'Courier', 'Courier New', 'Menlo', 'Monaco', 'Consolas',
+]
 
 const loadedFonts = new Set<string>()
 
@@ -109,8 +146,30 @@ function loadGoogleFont(family: string, weight: string) {
   document.head.appendChild(link)
 }
 
-const fontSelect = document.getElementById('sb-font') as HTMLSelectElement
-const fontCustom = document.getElementById('sb-font-custom') as HTMLInputElement
+type QueryLocalFonts = () => Promise<Array<{ family: string; fullName?: string }>>
+type FontSource = 'google' | 'local'
+
+function uniqueSorted(list: string[]): string[] {
+  return Array.from(new Set(list.filter(Boolean))).sort((a, b) => a.localeCompare(b))
+}
+
+function uniqueOptions(options: SelectOption[]): SelectOption[] {
+  const map = new Map<string, string>()
+  for (const option of options) {
+    if (!option.value) continue
+    if (!map.has(option.value)) map.set(option.value, option.text || option.value)
+  }
+  return Array.from(map.entries())
+    .map(([value, text]) => ({ value, text }))
+    .sort((a, b) => a.text.localeCompare(b.text))
+}
+
+const fontGoogleSelect = document.getElementById('sb-font-google') as HTMLSelectElement
+const fontLocalSelect = document.getElementById('sb-font-local') as HTMLSelectElement
+const googleFontStatus = document.getElementById('sb-font-google-status') as HTMLSpanElement
+const googleFontLoadBtn = document.getElementById('sb-font-google-load') as HTMLButtonElement
+const localFontStatus = document.getElementById('sb-font-local-status') as HTMLSpanElement
+const localFontLoadBtn = document.getElementById('sb-font-local-load') as HTMLButtonElement
 const sizeInput = document.getElementById('sb-size') as HTMLInputElement
 const weightSelect = document.getElementById('sb-weight') as HTMLSelectElement
 const textInput = document.getElementById('sb-input') as HTMLTextAreaElement
@@ -120,19 +179,205 @@ const resizeHandle = document.getElementById('sb-resize') as HTMLDivElement
 const sandboxBody = document.getElementById('sb-body') as HTMLDivElement
 
 // Font selector
-fontSelect.append(...GOOGLE_FONTS.map(f => new Option(f, f)))
-fontSelect.value = 'Inter'
+const baseGoogleOptions = GOOGLE_FONTS.map(font => ({ value: font, text: font }))
+fontGoogleSelect.append(...baseGoogleOptions.map(option => new Option(option.text, option.value)))
+fontGoogleSelect.value = 'Inter'
 
-function getSelectedFont(): string {
-  return fontCustom.value.trim() || fontSelect.value
+const baseLocalFonts = uniqueSorted(DEFAULT_LOCAL_FONTS)
+const baseLocalOptions = baseLocalFonts.map(font => ({ value: font, text: font }))
+fontLocalSelect.append(...baseLocalOptions.map(option => new Option(option.text, option.value)))
+const defaultLocalFont = baseLocalFonts.includes('system-ui') ? 'system-ui' : baseLocalFonts[0] ?? ''
+if (defaultLocalFont) fontLocalSelect.value = defaultLocalFont
+
+const queryLocalFonts = (window as unknown as { queryLocalFonts?: QueryLocalFonts }).queryLocalFonts
+if (!queryLocalFonts) {
+  localFontStatus.textContent = 'Local font list is available in Chrome/Edge.'
+  if (localFontLoadBtn) {
+    localFontLoadBtn.disabled = true
+    localFontLoadBtn.textContent = 'Unavailable'
+  }
+}
+
+let googleSelect: ChoicesInstance | null = null
+let googleFontsLoaded = false
+let googleFontsLoading = false
+
+function syncChoices(instance: ChoicesInstance | null, options: SelectOption[], nextValue: string) {
+  if (!instance) return
+  const choices = options.map(option => ({
+    value: option.value,
+    label: option.text,
+    selected: option.value === nextValue,
+  }))
+  instance.setChoices(choices, 'value', 'label', true)
+}
+
+function syncGoogleFontOptions(options: SelectOption[]) {
+  const nextOptions = uniqueOptions(options)
+  const nextValues = nextOptions.map(option => option.value)
+  const current = fontGoogleSelect.value
+  fontGoogleSelect.replaceChildren(...nextOptions.map(option => new Option(option.text, option.value)))
+  const nextValue = nextValues.includes(current) ? current : nextValues[0] ?? ''
+  if (nextValue) fontGoogleSelect.value = nextValue
+  syncChoices(googleSelect, nextOptions, nextValue)
+}
+
+async function ensureGoogleFonts() {
+  if (googleFontsLoaded || googleFontsLoading) return
+  googleFontsLoading = true
+  if (googleFontLoadBtn) {
+    googleFontLoadBtn.disabled = true
+    googleFontLoadBtn.textContent = 'Loading...'
+  }
+  if (googleFontStatus) {
+    googleFontStatus.classList.remove('is-error')
+    googleFontStatus.textContent = 'Loading Google Fonts...'
+  }
+  try {
+    const response = await fetch(GOOGLE_FONTS_URL)
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+    const data = await response.json() as string[] | { familyMetadataList?: Array<{ family: string }> }
+    const families = Array.isArray(data)
+      ? data.filter(Boolean)
+      : data.familyMetadataList?.map(item => item.family).filter(Boolean) ?? []
+    if (families.length === 0) return
+    const googleOptions = families.map(font => ({ value: font, text: font }))
+    syncGoogleFontOptions(googleOptions)
+    googleFontsLoaded = true
+    if (googleFontStatus) {
+      googleFontStatus.textContent = `Google fonts loaded (${fontGoogleSelect.options.length})`
+    }
+    if (googleFontLoadBtn) {
+      googleFontLoadBtn.textContent = 'Loaded'
+    }
+  } catch (error) {
+    console.warn('[visual-kerning] Failed to load Google Fonts list', error)
+    if (googleFontStatus) {
+      googleFontStatus.textContent = 'Google font list failed to load.'
+      googleFontStatus.classList.add('is-error')
+    }
+    if (googleFontLoadBtn) {
+      googleFontLoadBtn.disabled = false
+      googleFontLoadBtn.textContent = 'Load'
+    }
+  } finally {
+    googleFontsLoading = false
+  }
+}
+
+googleSelect = new Choices(fontGoogleSelect, {
+  searchEnabled: true,
+  shouldSort: false,
+  shouldSortItems: false,
+  searchFields: ['label', 'value'],
+  itemSelectText: '',
+  allowHTML: false,
+  searchResultLimit: 500,
+  renderChoiceLimit: -1,
+})
+if (googleFontLoadBtn) {
+  googleFontLoadBtn.addEventListener('click', () => {
+    void ensureGoogleFonts()
+  })
+}
+
+let localSelect: ChoicesInstance | null = null
+let localFontsLoaded = false
+let localFontsLoading = false
+
+function syncLocalFontOptions(options: SelectOption[]) {
+  const nextOptions = uniqueOptions(options)
+  const nextValues = nextOptions.map(option => option.value)
+  const current = fontLocalSelect.value
+  fontLocalSelect.replaceChildren(...nextOptions.map(option => new Option(option.text, option.value)))
+  const nextValue = nextValues.includes(current) ? current : nextValues[0] ?? ''
+  if (nextValue) fontLocalSelect.value = nextValue
+  syncChoices(localSelect, nextOptions, nextValue)
+}
+
+async function ensureLocalFonts() {
+  if (localFontsLoaded || localFontsLoading || !queryLocalFonts) return
+  localFontsLoading = true
+  localFontStatus.textContent = 'Loading local fonts...'
+  if (localFontLoadBtn) {
+    localFontLoadBtn.disabled = true
+    localFontLoadBtn.textContent = 'Loading...'
+  }
+  try {
+    const fonts = await queryLocalFonts()
+    const localOptions = fonts.map(font => ({
+      value: font.family,
+      text: font.fullName || font.family,
+    }))
+    syncLocalFontOptions([...baseLocalOptions, ...localOptions])
+    localFontStatus.textContent = `Local fonts loaded (${fontLocalSelect.options.length})`
+    localFontsLoaded = true
+    if (localFontLoadBtn) {
+      localFontLoadBtn.textContent = 'Loaded'
+    }
+  } catch {
+    localFontStatus.textContent = 'Local font access was blocked.'
+    localFontStatus.classList.add('is-error')
+    if (localFontLoadBtn) {
+      localFontLoadBtn.disabled = false
+      localFontLoadBtn.textContent = 'Load'
+    }
+  } finally {
+    localFontsLoading = false
+  }
+}
+
+localSelect = new Choices(fontLocalSelect, {
+  searchEnabled: true,
+  shouldSort: false,
+  shouldSortItems: false,
+  searchFields: ['label', 'value'],
+  itemSelectText: '',
+  allowHTML: false,
+  searchResultLimit: 500,
+  renderChoiceLimit: -1,
+})
+if (localFontLoadBtn) {
+  localFontLoadBtn.addEventListener('click', () => {
+    void ensureLocalFonts()
+  })
+}
+
+function preventScrollJump(root: HTMLElement) {
+  let lastScrollX = 0
+  let lastScrollY = 0
+  root.addEventListener('pointerdown', () => {
+    lastScrollX = window.scrollX
+    lastScrollY = window.scrollY
+  })
+  root.addEventListener('focusin', () => {
+    requestAnimationFrame(() => {
+      if (window.scrollX !== lastScrollX || window.scrollY !== lastScrollY) {
+        window.scrollTo(lastScrollX, lastScrollY)
+      }
+    })
+  })
+}
+
+document.querySelectorAll('.sandbox-header .choices').forEach(el => {
+  preventScrollJump(el as HTMLElement)
+})
+
+let activeFontSource: FontSource = 'google'
+
+function getSelectedFont(): { family: string; source: FontSource } {
+  if (activeFontSource === 'local' && fontLocalSelect.value) {
+    return { family: fontLocalSelect.value, source: 'local' }
+  }
+  return { family: fontGoogleSelect.value, source: 'google' }
 }
 
 function updatePreviewStyle() {
-  const family = getSelectedFont()
+  const { family, source } = getSelectedFont()
   const size = sizeInput.value
   const weight = weightSelect.value
-  loadGoogleFont(family, weight)
-  preview.style.fontFamily = `'${family}', sans-serif`
+  if (source === 'google') loadGoogleFont(family, weight)
+  preview.style.fontFamily = `'${family}', ${source === 'google' ? 'sans-serif' : 'system-ui, sans-serif'}`
   preview.style.fontSize = `${size}px`
   preview.style.fontWeight = weight
 }
@@ -152,12 +397,12 @@ function updatePreviewText() {
 }
 
 textInput.addEventListener('input', updatePreviewText)
-fontSelect.addEventListener('change', () => {
-  fontCustom.value = ''
+fontGoogleSelect.addEventListener('change', () => {
+  activeFontSource = 'google'
   updatePreviewStyle()
 })
-fontCustom.addEventListener('input', () => {
-  if (fontCustom.value.trim()) fontSelect.value = ''
+fontLocalSelect.addEventListener('change', () => {
+  activeFontSource = 'local'
   updatePreviewStyle()
 })
 sizeInput.addEventListener('input', updatePreviewStyle)
@@ -272,10 +517,11 @@ exportBtn.addEventListener('click', () => {
     }
   })
 
-  const family = getSelectedFont()
+  const { family, source } = getSelectedFont()
   const size = sizeInput.value
   const weight = weightSelect.value
-  const style = `font-family:'${family}',sans-serif; font-size:${size}px; font-weight:${weight}; line-height:1.1;`
+  const fallback = source === 'google' ? 'sans-serif' : 'system-ui, sans-serif'
+  const style = `font-family:'${family}',${fallback}; font-size:${size}px; font-weight:${weight}; line-height:1.1;`
   clone.setAttribute('style', style + ' ' + (clone.getAttribute('style') || ''))
 
   // span のインラインスタイルから letter-spacing:0em を除去（不要）

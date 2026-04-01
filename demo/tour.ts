@@ -59,8 +59,23 @@ export interface TourContext {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(r => setTimeout(r, ms))
+type CancelRegistrar = (handler: () => void) => () => void
+
+function sleep(ms: number, onCancel?: CancelRegistrar): Promise<void> {
+  return new Promise(resolve => {
+    const id = window.setTimeout(() => {
+      cleanup()
+      resolve()
+    }, ms)
+    const cleanup = () => {
+      if (cancelCleanup) cancelCleanup()
+      window.clearTimeout(id)
+    }
+    const cancelCleanup = onCancel?.(() => {
+      cleanup()
+      resolve()
+    })
+  })
 }
 
 function resolve(selector: string): HTMLElement | null {
@@ -217,7 +232,13 @@ function moveSpotlight(spotlight: HTMLElement, target: HTMLElement, pad = 10) {
   })
 }
 
-async function teleportSpotlight(spotlight: HTMLElement, target: HTMLElement, pad = 10) {
+async function teleportSpotlight(
+  spotlight: HTMLElement,
+  target: HTMLElement,
+  pad = 10,
+  onCancel?: CancelRegistrar,
+  isCancelled?: () => boolean,
+) {
   const rect = target.getBoundingClientRect()
   const cx = rect.left + rect.width / 2
   const cy = rect.top + rect.height / 2
@@ -233,7 +254,8 @@ async function teleportSpotlight(spotlight: HTMLElement, target: HTMLElement, pa
     width: '0px',
     height: '0px',
   })
-  await sleep(300)
+  await sleep(300, onCancel)
+  if (isCancelled?.()) return
 
   // トランジションなしで移動先に配置
   spotlight.style.transition = 'none'
@@ -253,7 +275,8 @@ async function teleportSpotlight(spotlight: HTMLElement, target: HTMLElement, pa
     width: `${rect.width + pad * 2}px`,
     height: `${rect.height + pad * 2}px`,
   })
-  await sleep(350)
+  await sleep(350, onCancel)
+  if (isCancelled?.()) return
 
   spotlight.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
 }
@@ -445,6 +468,8 @@ interface RunContext {
   totalSteps: number
   cancelled: boolean
   ignoreAttr?: string
+  onCancel: CancelRegistrar
+  isCancelled: () => boolean
 }
 
 async function executeAction(action: TourAction, ctx: RunContext): Promise<void> {
@@ -501,7 +526,7 @@ async function executeAction(action: TourAction, ctx: RunContext): Promise<void>
       ctx.caption.style.opacity = '0'
       ctx.caption.offsetHeight
       ctx.caption.style.transition = 'opacity 0.3s, transform 0.3s'
-      await teleportSpotlight(ctx.spotlight, target, action.pad)
+      await teleportSpotlight(ctx.spotlight, target, action.pad, ctx.onCancel, ctx.isCancelled)
       break
     }
 
@@ -535,16 +560,18 @@ async function executeAction(action: TourAction, ctx: RunContext): Promise<void>
       }
 
       for (let i = 0; i < repeat; i++) {
-        if (ctx.cancelled) return
+        if (ctx.isCancelled()) return
         if (flash.length) flashKeycaps(ctx.caption, flash, hold)
         simulateKey(action.key, action.code, action.modifiers)
         if (interval > 0 && i < repeat - 1) {
-          await sleep(interval)
+          await sleep(interval, ctx.onCancel)
+          if (ctx.isCancelled()) return
         }
       }
 
       if (flash.length || hold.length) {
-        await sleep(120)
+        await sleep(120, ctx.onCancel)
+        if (ctx.isCancelled()) return
         clearKeycaps(ctx.caption)
       }
       break
@@ -557,7 +584,7 @@ async function executeAction(action: TourAction, ctx: RunContext): Promise<void>
     }
 
     case 'wait': {
-      await sleep(action.ms)
+      await sleep(action.ms, ctx.onCancel)
       break
     }
 
@@ -615,6 +642,21 @@ export function createTour(options: TourOptions): Tour {
   function runTour() {
     _active = true
     let cancelled = false
+    const cancelCallbacks = new Set<() => void>()
+
+    const onCancel: CancelRegistrar = (handler) => {
+      cancelCallbacks.add(handler)
+      return () => cancelCallbacks.delete(handler)
+    }
+
+    const isCancelled = () => cancelled
+
+    const requestCancel = () => {
+      if (cancelled) return
+      cancelled = true
+      for (const handler of Array.from(cancelCallbacks)) handler()
+      cancelCallbacks.clear()
+    }
 
     const spotlight = createSpotlight(ignoreAttr)
     const caption = createCaption(ignoreAttr)
@@ -624,15 +666,20 @@ export function createTour(options: TourOptions): Tour {
     skipBtn.className = 'tour-skip-btn'
     if (ignoreAttr) skipBtn.setAttribute(ignoreAttr, 'true')
     skipBtn.textContent = skipLabel
-    skipBtn.addEventListener('click', () => { cancelled = true })
+    skipBtn.addEventListener('click', requestCancel)
 
-    function onPageClick(e: MouseEvent) {
+    function onPagePointerDown(e: PointerEvent) {
       if (!e.isTrusted) return
       const target = e.target as HTMLElement
       if (target.closest('.tour-skip-btn') || target.closest('.tour-replay-btn')) return
-      cancelled = true
+      requestCancel()
     }
-    document.addEventListener('click', onPageClick, true)
+    function onKeyDown(e: KeyboardEvent) {
+      if (!e.isTrusted) return
+      if (e.key === 'Escape') requestCancel()
+    }
+    document.addEventListener('pointerdown', onPagePointerDown, true)
+    document.addEventListener('keydown', onKeyDown, true)
 
     document.head.appendChild(styleEl)
     document.body.append(spotlight, caption, skipBtn)
@@ -641,7 +688,8 @@ export function createTour(options: TourOptions): Tour {
     spotlight.style.opacity = '0'
 
     function cleanup() {
-      document.removeEventListener('click', onPageClick, true)
+      document.removeEventListener('pointerdown', onPagePointerDown, true)
+      document.removeEventListener('keydown', onKeyDown, true)
       _active = false
       clearHighlight()
       localStorage.setItem(doneKey, '1')
@@ -667,6 +715,8 @@ export function createTour(options: TourOptions): Tour {
           totalSteps: steps.length,
           cancelled: false,
           ignoreAttr,
+          onCancel,
+          isCancelled,
         }
 
         for (const action of step.actions) {
