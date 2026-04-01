@@ -1,0 +1,235 @@
+/**
+ * デモページのチュートリアル定義
+ * ツアーエンジンに渡すステップ配列 + デモ固有のヘルパー
+ */
+
+import type { TourStep } from '../src/tour'
+
+export const TUTORIAL_DONE_KEY = 'typespacing-tutorial-done'
+
+type OnEnable = (handler: () => void) => (() => void)
+
+const isMac = navigator.platform.includes('Mac')
+const altKey = isMac ? 'Option' : 'Alt'
+const cmdKLabel = isMac ? 'Cmd + K' : 'Ctrl + K'
+
+// --- デモ固有ヘルパー ---
+
+export function simulateCmdK() {
+  const o = { key: 'k', code: 'KeyK', bubbles: true, metaKey: isMac, ctrlKey: !isMac }
+  window.dispatchEvent(new KeyboardEvent('keydown', o))
+  window.dispatchEvent(new KeyboardEvent('keyup', o))
+}
+
+/** 物理ベースの自由落下でファイルアイコンを落とすアニメーション (既存コードの移植) */
+function animateJsonDownload(anchor: HTMLElement): Promise<void> {
+  const rect = anchor.getBoundingClientRect()
+  const startX = rect.left + rect.width / 2 - 24
+  const startY = rect.top + rect.height / 2 - 30
+
+  const icon = document.createElement('div')
+  icon.setAttribute('data-typespacing-ignore', 'true')
+
+  // SVG はハードコードされた静的リテラル（ユーザー入力なし）
+  const parser = new DOMParser()
+  const svgDoc = parser.parseFromString(
+    '<svg width="48" height="60" viewBox="0 0 48 60" fill="none" xmlns="http://www.w3.org/2000/svg">'
+    + '<path d="M4 0h28l16 16v40a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" fill="#fff"/>'
+    + '<path d="M32 0l16 16H36a4 4 0 01-4-4V0z" fill="#ddd"/>'
+    + '<path d="M4 0h28l16 16v40a4 4 0 01-4 4H4a4 4 0 01-4-4V4a4 4 0 014-4z" stroke="#ccc" stroke-width="1" fill="none"/>'
+    + '<text x="24" y="42" text-anchor="middle" fill="#1a1a1a" font-family="ui-monospace,SFMono-Regular,monospace" font-size="16" font-weight="700">{ }</text>'
+    + '</svg>',
+    'image/svg+xml',
+  )
+  icon.appendChild(svgDoc.documentElement)
+
+  Object.assign(icon.style, {
+    position: 'fixed',
+    left: `${startX}px`,
+    top: `${startY}px`,
+    zIndex: '100002',
+    pointerEvents: 'none',
+    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))',
+  })
+  document.body.appendChild(icon)
+  icon.offsetHeight
+
+  const totalDuration = 1200
+  const frames: Keyframe[] = []
+  const v0 = -14
+  const g = 0.45
+  const numFrames = 30
+
+  for (let i = 0; i <= numFrames; i++) {
+    const t = i / numFrames
+    const time = t * totalDuration / 16
+    const y = v0 * time + 0.5 * g * time * time
+    const rotation = -8 + t * 20
+    frames.push({
+      transform: `translateY(${y}px) rotate(${rotation}deg)`,
+      opacity: 1,
+      offset: t,
+    })
+  }
+
+  const anim = icon.animate(frames, {
+    duration: totalDuration,
+    easing: 'linear',
+    fill: 'forwards',
+  })
+
+  return new Promise(resolve => {
+    anim.onfinish = () => { icon.remove(); resolve() }
+  })
+}
+
+// --- ステップ定義 ---
+
+const TARGET_TEXT = '.card:first-child [data-sizable]'
+
+export function buildTutorialSteps(onEnable: OnEnable): TourStep[] {
+  let enabledPromise: Promise<void>
+  return [
+    // Step 1: Cmd+K でエディタを起動
+    {
+      actions: [
+        { type: 'wait', ms: 400 },
+        { type: 'overlay', visible: true },
+        { type: 'caption-center', content: [
+          'Press ', { key: 'cmd', label: isMac ? '\u2318' : 'Ctrl' }, ' + ', { key: 'k', label: 'K' }, ' to open the editor palette.',
+        ]},
+        { type: 'wait', ms: 1800 },
+        { type: 'run', fn: () => { enabledPromise = new Promise<void>(r => { const d = onEnable(() => { d(); r() }) }) }},
+        { type: 'key', key: 'k', code: 'KeyK', modifiers: { metaKey: isMac, ctrlKey: !isMac }, highlight: ['cmd', 'k'] },
+        { type: 'run', fn: async () => { await enabledPromise }},
+        { type: 'wait', ms: 50 },
+        { type: 'spotlight-move', target: '.js-panel', pad: 6 },
+        { type: 'wait', ms: 1500 },
+      ],
+    },
+
+    // Step 2: テキストブロックをクリックして編集開始
+    {
+      actions: [
+        { type: 'scroll', target: TARGET_TEXT, block: 'center' },
+        { type: 'spotlight-teleport', target: TARGET_TEXT },
+        { type: 'caption', target: TARGET_TEXT, position: 'bottom', content: ['Clicking a text block to start editing...'], instant: true },
+        { type: 'wait', ms: 1500 },
+        { type: 'run', fn: (ctx) => {
+          const el = document.querySelector(TARGET_TEXT) as HTMLElement | null
+          if (!el) return
+          const spans = el.querySelectorAll('.typespacing-char')
+          if (spans.length === 0) {
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 0, clientY: 0 }))
+            return
+          }
+          const span = spans[Math.min(2, spans.length - 1)] as HTMLElement
+          const rect = span.getBoundingClientRect()
+          ctx.showRipple(rect.right, rect.top + rect.height / 2)
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rect.right, clientY: rect.top + rect.height / 2 }))
+        }},
+        { type: 'wait', ms: 500 },
+        { type: 'caption-hide' },
+        { type: 'wait', ms: 400 },
+      ],
+    },
+
+    // Step 3: 文字間をカーニング調整
+    {
+      actions: [
+        { type: 'spotlight-move', target: TARGET_TEXT },
+        { type: 'caption', target: TARGET_TEXT, position: 'bottom', content: [
+          'Move ', { key: 'nav-left', label: '\u2190' }, ' ', { key: 'nav-right', label: '\u2192' },
+          '   Adjust ', { key: 'adj-mod', label: altKey }, ' + ', { key: 'adj-left', label: '\u2190' }, ' ', { key: 'adj-right', label: '\u2192' },
+        ]},
+        { type: 'wait', ms: 800 },
+        { type: 'key', key: 'ArrowLeft', code: 'ArrowLeft', highlight: ['nav-left'] },
+        { type: 'wait', ms: 400 },
+        { type: 'key', key: 'ArrowRight', code: 'ArrowRight', modifiers: { altKey: true }, repeat: 5, interval: 180, holdKeys: ['adj-mod'], highlight: ['adj-right'] },
+        { type: 'wait', ms: 300 },
+        { type: 'key', key: 'ArrowLeft', code: 'ArrowLeft', modifiers: { altKey: true }, repeat: 8, interval: 180, holdKeys: ['adj-mod'], highlight: ['adj-left'] },
+        { type: 'wait', ms: 400 },
+        { type: 'key', key: 'ArrowRight', code: 'ArrowRight', modifiers: { altKey: true }, repeat: 3, interval: 180, holdKeys: ['adj-mod'], highlight: ['adj-right'] },
+        { type: 'wait', ms: 800 },
+        { type: 'caption-hide' },
+        { type: 'wait', ms: 400 },
+      ],
+    },
+
+    // Step 4: Before/After (Compare) を試す
+    {
+      actions: [
+        { type: 'spotlight-move', target: '.js-compare', pad: 6 },
+        { type: 'highlight', target: '.js-compare' },
+        { type: 'caption', target: '.js-compare', position: 'left', content: [
+          { strong: 'Before / After' }, ' \u2014 toggle to compare with the original spacing.',
+        ]},
+        { type: 'wait', ms: 1500 },
+        { type: 'click', target: '.js-compare' },
+        { type: 'wait', ms: 1500 },
+        { type: 'click', target: '.js-compare' },
+        { type: 'wait', ms: 800 },
+      ],
+    },
+
+    // Step 5: Guides を試す
+    {
+      actions: [
+        { type: 'spotlight-transition', duration: '0.15s', easing: 'ease' },
+        { type: 'spotlight-move', target: '.js-gaps', pad: 6 },
+        { type: 'wait', ms: 150 },
+        { type: 'spotlight-transition', duration: '0.4s', easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+        { type: 'highlight', target: '.js-gaps' },
+        { type: 'caption', target: '.js-gaps', position: 'left', content: [
+          { strong: 'Guides' }, ' \u2014 show spacing markers between characters.',
+        ]},
+        { type: 'wait', ms: 1500 },
+        { type: 'click', target: '.js-gaps' },
+        { type: 'wait', ms: 1500 },
+        { type: 'click', target: '.js-gaps' },
+        { type: 'wait', ms: 800 },
+      ],
+    },
+
+    // Step 6: Export で JSON を書き出し
+    {
+      actions: [
+        { type: 'spotlight-transition', duration: '0.15s', easing: 'ease' },
+        { type: 'spotlight-move', target: '.js-export', pad: 6 },
+        { type: 'highlight', target: '.js-export' },
+        { type: 'caption', target: '.js-export', position: 'left', content: [
+          { strong: 'Export' }, ' \u2014 copies kerning data as JSON.',
+          '\n',
+          'Apply it with the typespacing library and you\'re done!',
+        ]},
+        { type: 'wait', ms: 1500 },
+        { type: 'run', fn: async () => {
+          const el = document.querySelector('.js-export') as HTMLElement | null
+          if (el) await animateJsonDownload(el)
+        }},
+        { type: 'wait', ms: 1000 },
+      ],
+    },
+
+    // Step 7: Reset で元に戻す
+    {
+      actions: [
+        { type: 'spotlight-transition', duration: '0.15s', easing: 'ease' },
+        { type: 'spotlight-move', target: '.js-reset', pad: 6 },
+        { type: 'highlight', target: '.js-reset' },
+        { type: 'caption', target: '.js-reset', position: 'left', content: [
+          { strong: 'Reset' }, ' \u2014 discard all changes and restore original spacing.',
+        ]},
+        { type: 'wait', ms: 1500 },
+        { type: 'run', fn: () => {
+          const originalConfirm = window.confirm
+          window.confirm = () => true
+          const el = document.querySelector('.js-reset') as HTMLElement
+          if (el) el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 0, clientY: 0 }))
+          window.confirm = originalConfirm
+        }},
+        { type: 'wait', ms: 1500 },
+      ],
+    },
+  ]
+}

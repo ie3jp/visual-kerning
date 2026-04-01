@@ -1,5 +1,5 @@
 /node_modules
-demo/
+demo-dist/
 .DS_Store
 test-results/
 docs/
