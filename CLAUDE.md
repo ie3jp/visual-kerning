@@ -8,7 +8,6 @@
 - 目的: ブラウザ上で調整したカーニングをJSON化し、DOMに適用する
 - 主要公開API:
   - `createKerningEditor` — 統合API（editable オプションで編集/本番切替）
-  - `createTour` — インタラクティブツアー
 - 外部依存ゼロ（フレームワーク非依存）
 
 ## Key files
@@ -17,7 +16,7 @@
 - `src/applyKerning.ts`: JSON適用ロジック
 - `src/kerningEditor.ts`: 編集コア状態とイベント処理
 - `src/kerningUI.ts`: 統合エディタUI
-- `src/tour.ts`: ツアー機能
+- `demo/tour.ts`: デモ用ツアー機能
 - `src/validation.ts`: バリデーション
 - `src/editorMessages.ts`: i18nメッセージ定義
 - `llms.txt`: LLM向けAPI仕様（npmパッケージに同梱）

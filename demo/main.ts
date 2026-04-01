@@ -1,7 +1,7 @@
 import { createKerningEditor } from '../src/kerningUI'
 import { ACTIVE_CLASS, CHAR_CLASS, MODIFIED_CLASS, STORAGE_KEY } from '../src/kerningEditor'
 import kerningData from './kerning-export.json'
-import { createTour } from '../src/tour'
+import { createTour } from './tour'
 import { buildTutorialSteps, simulateCmdK, TUTORIAL_DONE_KEY } from './tutorial'
 
 type PersistedArea = { text: string; kerning: number[]; indent: number; font: { family: string; weight: string; size: string } }

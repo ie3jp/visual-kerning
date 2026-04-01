@@ -116,7 +116,7 @@ add `data-typespacing-ignore`:
 
 ### `createKerningEditor(options?)`
 
-The single entry point for both editing and production use.
+The single public entry point for both editing and production use.
 
 ```ts
 const editor = createKerningEditor({
@@ -130,6 +130,8 @@ editor.mount()
 - `editable: true` (default) — editing UI + keyboard shortcuts
 - `editable: false` + `kerning` — production mode, applies kerning data only
 - `mount()` / `unmount()` — attach / detach from the DOM
+
+`KerningExport` is the public data shape used by the `kerning` option.
 
 #### Events
 

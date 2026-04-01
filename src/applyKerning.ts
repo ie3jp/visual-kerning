@@ -3,14 +3,8 @@ import { assertValidKerningExport } from './validation'
 /**
  * カーニングJSON適用ユーティリティ
  *
- * デザイナーがブラウザ上で調整・書き出したカーニングJSONを
- * エンジニアがDOMに適用するための関数。
- * フレームワーク非依存（Vanilla JS）で動作する。
- *
- * @example
- * import { applyKerning } from 'typespacing'
- * import data from './kerning-export.json'
- * document.addEventListener('DOMContentLoaded', () => applyKerning(data))
+ * `createKerningEditor({ editable: false, kerning })` が内部で利用する
+ * 低レベル実装。公開APIは `createKerningEditor` を想定する。
  */
 
 export interface KerningArea {

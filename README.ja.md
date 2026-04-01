@@ -116,7 +116,7 @@ editor.mount()
 
 ### `createKerningEditor(options?)`
 
-編集と本番適用の両方をカバーする統合API。
+編集と本番適用の両方をカバーする、唯一の公開API。
 
 ```ts
 const editor = createKerningEditor({
@@ -130,6 +130,8 @@ editor.mount()
 - `editable: true`（デフォルト）— 編集UI + キーボードショートカット
 - `editable: false` + `kerning` — 本番モード。カーニングデータの適用のみ
 - `mount()` / `unmount()` — DOM への接続・切断
+
+`kerning` に渡す `KerningExport` が、公開されているデータ型です。
 
 #### Events
 

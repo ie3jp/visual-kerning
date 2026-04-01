@@ -13,7 +13,17 @@ import {
   type KerningArea,
   type KerningExport,
 } from './applyKerning'
-import { sanitizePersistedKerningData, type PersistedKerningArea } from './validation'
+import {
+  LOG_PREFIX,
+  TOOL_NAME,
+  loadPersistedData,
+  removePersistedData,
+  savePersistedData,
+} from './kerningEditorStorage'
+import { createTypedEventEmitter, type TypedEventEmitter } from './typedEventEmitter'
+import type { PersistedKerningArea } from './validation'
+
+export { LOG_PREFIX, STORAGE_KEY, TOOL_NAME, seedPersistedKerningData } from './kerningEditorStorage'
 
 export interface ValueBox<T> {
   value: T
@@ -30,10 +40,6 @@ function watchedValueBox<T>(initial: T, onChange: () => void): ValueBox<T> {
     set value(v: T) { _v = v; onChange() },
   }
 }
-
-// ---------------------------------------------------------------------------
-// Typed Event Emitter
-// ---------------------------------------------------------------------------
 
 export interface KerningChangeDetail {
   selector: string
@@ -55,35 +61,8 @@ export interface KerningEditorEventMap {
   reset: undefined
 }
 
-type EventHandler<T> = (detail: T) => void
+export interface KerningEventEmitter extends TypedEventEmitter<KerningEditorEventMap> {}
 
-export interface KerningEventEmitter {
-  on<K extends keyof KerningEditorEventMap>(
-    event: K,
-    handler: EventHandler<KerningEditorEventMap[K]>,
-  ): () => void
-}
-
-function createEventEmitter(): KerningEventEmitter & {
-  emit<K extends keyof KerningEditorEventMap>(event: K, detail: KerningEditorEventMap[K]): void
-} {
-  const listeners = new Map<string, Set<EventHandler<any>>>()
-
-  return {
-    on(event, handler) {
-      if (!listeners.has(event)) listeners.set(event, new Set())
-      listeners.get(event)!.add(handler)
-      return () => { listeners.get(event)?.delete(handler) }
-    },
-    emit(event, detail) {
-      listeners.get(event)?.forEach(fn => fn(detail))
-    },
-  }
-}
-
-export const TOOL_NAME = 'typespacing'
-export const LOG_PREFIX = `[${TOOL_NAME}]`
-export const STORAGE_KEY = 'typespacing-editor-data'
 export const OVERLAY_CLASS = 'typespacing-overlay'
 export const CHAR_CLASS = 'typespacing-char'
 export const ACTIVE_CLASS = 'typespacing-active'
@@ -161,46 +140,6 @@ function toPersistedData(areas: Map<string, KerningEditorArea>): Record<string, 
     }
   })
   return data
-}
-
-function loadPersistedData(): Record<string, PersistedKerningArea> {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return {}
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    const sanitized = sanitizePersistedKerningData(parsed)
-    if (!sanitized) {
-      console.warn(`${LOG_PREFIX} Ignoring invalid localStorage data shape.`)
-      localStorage.removeItem(STORAGE_KEY)
-      return {}
-    }
-
-    if (sanitized.droppedSelectors.length > 0) {
-      console.warn(
-        `${LOG_PREFIX} Ignoring invalid stored areas: ${sanitized.droppedSelectors.join(', ')}`,
-      )
-      if (Object.keys(sanitized.data).length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized.data))
-      } else {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-
-    return sanitized.data
-  } catch (error) {
-    console.warn(`${LOG_PREFIX} Failed to parse localStorage data.`, error)
-    localStorage.removeItem(STORAGE_KEY)
-    return {}
-  }
-}
-
-function savePersistedData(areas: Map<string, KerningEditorArea>) {
-  const data = toPersistedData(areas)
-  if (Object.keys(data).length) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } else {
-    localStorage.removeItem(STORAGE_KEY)
-  }
 }
 
 function getFontInfo(el: Element): KerningArea['font'] {
@@ -462,7 +401,7 @@ function moveCursorVertically(spans: HTMLElement[], currentGap: number, directio
 }
 
 export function createKerningPlugin(): KerningEditorPlugin {
-  const emitter = createEventEmitter()
+  const emitter = createTypedEventEmitter<KerningEditorEventMap>()
   let loadTimerId = 0
   const enabled = valueBox(false)
   const compareMode = valueBox(false)
@@ -780,7 +719,7 @@ export function createKerningPlugin(): KerningEditorPlugin {
       }
       area.el.classList.add(MODIFIED_CLASS)
       updateCursor()
-      savePersistedData(areas.value)
+      savePersistedData(toPersistedData(areas.value))
       emitter.emit('change', { selector, kerning: [...area.kerning], indent: area.indent })
       return
     }
@@ -864,7 +803,7 @@ export function createKerningPlugin(): KerningEditorPlugin {
     areas.value.clear()
     setCompareMode(false)
     deactivate()
-    localStorage.removeItem(STORAGE_KEY)
+    removePersistedData()
     emitter.emit('reset', undefined)
   }
 

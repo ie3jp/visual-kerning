@@ -3,7 +3,7 @@
  * ツアーエンジンに渡すステップ配列 + デモ固有のヘルパー
  */
 
-import type { TourStep } from '../src/tour'
+import type { TourStep } from './tour'
 
 export const TUTORIAL_DONE_KEY = 'typespacing-tutorial-done'
 

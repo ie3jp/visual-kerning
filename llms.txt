@@ -10,7 +10,7 @@ npm install typespacing
 
 ## API
 
-One function: `createKerningEditor(options?)`
+Single public entry point: `createKerningEditor(options?)`
 
 ```ts
 import { createKerningEditor } from 'typespacing'
