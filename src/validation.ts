@@ -55,7 +55,7 @@ export function isKerningExport(value: unknown): value is KerningExport {
 
 export function assertValidKerningExport(value: unknown): asserts value is KerningExport {
   if (!isKerningExport(value)) {
-    throw new TypeError('[typespacing] Invalid kerning export payload.')
+    throw new TypeError('[visual-kerning] Invalid kerning export payload.')
   }
 }
 

@@ -20,6 +20,12 @@ import {
   removePersistedData,
   savePersistedData,
 } from './kerningEditorStorage'
+import {
+  findGapIndex,
+  getGapRect,
+  moveCursorVertically,
+  type CursorRect,
+} from './kerningEditorMath'
 import { createTypedEventEmitter, type TypedEventEmitter } from './typedEventEmitter'
 import type { PersistedKerningArea } from './validation'
 
@@ -63,22 +69,10 @@ export interface KerningEditorEventMap {
 
 export interface KerningEventEmitter extends TypedEventEmitter<KerningEditorEventMap> {}
 
-export const OVERLAY_CLASS = 'typespacing-overlay'
-export const CHAR_CLASS = 'typespacing-char'
-export const ACTIVE_CLASS = 'typespacing-active'
-export const MODIFIED_CLASS = 'typespacing-modified'
-
-interface CursorRect {
-  x: number
-  y: number
-  h: number
-}
-
-interface GapPosition {
-  gapIndex: number
-  x: number
-  y: number
-}
+export const OVERLAY_CLASS = 'visual-kerning-overlay'
+export const CHAR_CLASS = 'visual-kerning-char'
+export const ACTIVE_CLASS = 'visual-kerning-active'
+export const MODIFIED_CLASS = 'visual-kerning-modified'
 
 export interface KerningEditorArea {
   selector: string
@@ -197,6 +191,7 @@ const INLINE_TAGS = new Set([
   'A', 'SPAN', 'EM', 'STRONG', 'B', 'I', 'SMALL',
   'MARK', 'ABBR', 'CODE', 'TIME', 'SUB', 'SUP',
 ])
+const IGNORE_SELECTOR = '[data-visual-kerning-ignore], [data-typespacing-ignore]'
 
 function isInlineContent(el: Element): boolean {
   for (const node of Array.from(el.childNodes)) {
@@ -237,7 +232,7 @@ function generateSelector(el: Element): string {
     }
 
     let part = current.tagName.toLowerCase()
-    const classes = Array.from(current.classList).filter(c => !c.startsWith('typespacing-'))
+    const classes = Array.from(current.classList).filter(c => !c.startsWith('visual-kerning-'))
     if (classes.length) {
       part += classes.map(c => `.${CSS.escape(c)}`).join('')
     }
@@ -264,140 +259,6 @@ function generateSelector(el: Element): string {
     }
   }
   return full
-}
-
-function isLineBreakBetween(left: DOMRect, right: DOMRect): boolean {
-  const verticalOverlap = Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top)
-  return verticalOverlap < Math.min(left.height, right.height) * 0.5
-}
-
-function getSpanRect(spans: HTMLElement[], index: number): DOMRect | null {
-  const span = spans[index]
-  if (!span) return null
-  return span.getBoundingClientRect()
-}
-
-function findGapIndex(spans: HTMLElement[], clientX: number, clientY: number): number {
-  if (spans.length < 1) return -1
-
-  // まずクリックY座標に最も近い行を特定する
-  const rects = spans.map((span) => span.getBoundingClientRect())
-  if (rects.length === 0) return -1
-  let bestLineY = Infinity
-  let bestLineDist = Infinity
-  for (const r of rects) {
-    const midY = (r.top + r.bottom) / 2
-    const dist = Math.abs(clientY - midY)
-    if (dist < bestLineDist) {
-      bestLineDist = dist
-      bestLineY = midY
-    }
-  }
-
-  // その行に属するspanだけを対象にX距離で判定
-  const lineThreshold = (rects[0]?.height ?? 0) * 0.5
-  const onLine = (r: DOMRect) => Math.abs((r.top + r.bottom) / 2 - bestLineY) < lineThreshold
-
-  let closest = -1
-  let minDist = Infinity
-
-  // 行頭（indent位置）
-  for (let i = 0; i < spans.length; i++) {
-    const rect = rects[i]
-    if (!rect) continue
-    if (onLine(rect)) {
-      const dist = Math.abs(clientX - rect.left)
-      if (dist < minDist) { minDist = dist; closest = i - 1 }
-      break
-    }
-  }
-
-  // 隣接span間のギャップ
-  for (let i = 0; i < spans.length - 1; i++) {
-    const currentRect = rects[i]
-    const nextRect = rects[i + 1]
-    if (!currentRect || !nextRect || !onLine(currentRect)) continue
-    // 次のspanが別の行なら、この行の行末ギャップ
-    if (!onLine(nextRect)) {
-      const dist = Math.abs(clientX - currentRect.right)
-      if (dist < minDist) { minDist = dist; closest = i }
-      continue
-    }
-    const gapX = (currentRect.right + nextRect.left) / 2
-    const dist = Math.abs(clientX - gapX)
-    if (dist < minDist) { minDist = dist; closest = i }
-  }
-
-  // 最終span（同じ行なら行末）
-  const lastIdx = spans.length - 1
-  const lastRect = rects[lastIdx]
-  if (lastRect && onLine(lastRect)) {
-    const dist = Math.abs(clientX - lastRect.right)
-    if (dist < minDist) closest = lastIdx
-  }
-
-  return closest
-}
-
-function getGapRect(spans: HTMLElement[], gapIndex: number): CursorRect | null {
-  if (spans.length === 0) return null
-  if (gapIndex === -1) {
-    const r = getSpanRect(spans, 0)
-    if (!r) return null
-    return { x: r.left, y: r.top, h: r.height }
-  }
-  if (gapIndex === spans.length - 1) {
-    const r = getSpanRect(spans, spans.length - 1)
-    if (!r) return null
-    return { x: r.right, y: r.top, h: r.height }
-  }
-
-  const left = getSpanRect(spans, gapIndex)
-  const right = getSpanRect(spans, gapIndex + 1)
-  if (!left || !right) return null
-  if (isLineBreakBetween(left, right)) {
-    return { x: right.left, y: right.top, h: right.height }
-  }
-  return {
-    x: (left.right + right.left) / 2,
-    y: Math.min(left.top, right.top),
-    h: Math.max(left.bottom, right.bottom) - Math.min(left.top, right.top),
-  }
-}
-
-function getGapPositions(spans: HTMLElement[]): GapPosition[] {
-  const positions: GapPosition[] = []
-  for (let gapIndex = -1; gapIndex < spans.length; gapIndex++) {
-    const rect = getGapRect(spans, gapIndex)
-    if (!rect) continue
-    positions.push({ gapIndex, x: rect.x, y: rect.y })
-  }
-  return positions
-}
-
-function moveCursorVertically(spans: HTMLElement[], currentGap: number, direction: 'up' | 'down'): number {
-  const positions = getGapPositions(spans)
-  const current = positions.find(pos => pos.gapIndex === currentGap)
-  if (!current) return currentGap
-
-  const lineThreshold = 4
-  const directional = positions.filter((pos) =>
-    direction === 'up'
-      ? pos.y < current.y - lineThreshold
-      : pos.y > current.y + lineThreshold,
-  )
-  if (directional.length === 0) return currentGap
-
-  const nearestLineY = direction === 'up'
-    ? Math.max(...directional.map(pos => pos.y))
-    : Math.min(...directional.map(pos => pos.y))
-
-  const lineCandidates = directional.filter(pos => Math.abs(pos.y - nearestLineY) <= lineThreshold)
-  return lineCandidates.reduce((best, pos) => {
-    const bestDist = Math.abs(best.x - current.x)
-    const nextDist = Math.abs(pos.x - current.x)
-    return nextDist < bestDist ? pos : best
-  }).gapIndex
 }
 
 export function createKerningPlugin(): KerningEditorPlugin {
@@ -586,11 +447,11 @@ export function createKerningPlugin(): KerningEditorPlugin {
   }
 
   function findTextElement(target: Element): HTMLElement | null {
-    const isIgnored = (el: Element) => !!el.closest('[data-typespacing-ignore]')
+    const isIgnored = (el: Element) => !!el.closest(IGNORE_SELECTOR)
 
     const charSpan = target.closest(`.${CHAR_CLASS}`)
     if (charSpan) {
-      // typespacing-char からインラインラッパーを越えて実際のテキストコンテナまで遡る
+      // visual-kerning-char からインラインラッパーを越えて実際のテキストコンテナまで遡る
       let container = charSpan.parentElement
       while (container && INLINE_TAGS.has(container.tagName)) {
         container = container.parentElement
@@ -619,7 +480,7 @@ export function createKerningPlugin(): KerningEditorPlugin {
     const target = rawTarget.nodeType === Node.TEXT_NODE ? rawTarget.parentElement : rawTarget as Element
     if (!target) return
     if (target.closest(`.${OVERLAY_CLASS}`) || target.closest('svg')) return
-    if (target.closest('[data-typespacing-ignore]')) return
+    if (target.closest(IGNORE_SELECTOR)) return
 
     e.preventDefault()
     e.stopPropagation()

@@ -1,11 +1,11 @@
-# typespacing
+# visual-kerning
 
 > Adjust per-character kerning in the browser, export as JSON, apply in production.
 
 ## Install
 
 ```bash
-npm install typespacing
+npm install visual-kerning
 ```
 
 ## API
@@ -13,7 +13,7 @@ npm install typespacing
 Single public entry point: `createKerningEditor(options?)`
 
 ```ts
-import { createKerningEditor } from 'typespacing'
+import { createKerningEditor } from 'visual-kerning'
 ```
 
 ### Options
@@ -108,7 +108,7 @@ When multiple gaps are selected, Alt + Arrow adjusts all at once (tracking).
 
 ## HTML attributes
 
-- `data-typespacing-ignore`: add to any element to exclude it from editing
+- `data-visual-kerning-ignore`: add to any element to exclude it from editing
 
 ## Key facts
 

@@ -26,7 +26,7 @@ test.describe('tutorial tour', () => {
     expect(await replayBtn.textContent()).toBe('Replay tour')
 
     // localStorage に完了フラグが立っている
-    const done = await page.evaluate(() => localStorage.getItem('typespacing-tutorial-done'))
+    const done = await page.evaluate(() => localStorage.getItem('visual-kerning-tutorial-done'))
     expect(done).toBe('1')
   })
 
@@ -57,7 +57,7 @@ test.describe('tutorial tour', () => {
     await expect(page.locator('.tour-skip-btn')).toBeVisible({ timeout: 5000 })
 
     // localStorage から完了フラグが消えている
-    const done = await page.evaluate(() => localStorage.getItem('typespacing-tutorial-done'))
+    const done = await page.evaluate(() => localStorage.getItem('visual-kerning-tutorial-done'))
     expect(done).toBeNull()
   })
 
@@ -91,7 +91,7 @@ test.describe('tutorial tour', () => {
 
     // ページをリロード（IMPORTED_KEY フラグを立ててリセットを防ぐ）
     await page.evaluate(() => {
-      localStorage.setItem('typespacing-editor-imported', '1')
+      localStorage.setItem('visual-kerning-editor-imported', '1')
     })
     await page.reload()
 

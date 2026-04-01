@@ -1,10 +1,10 @@
-# typespacing
+# visual-kerning
 
 [English](./README.md) | [日本語](./README.ja.md)
 
-[![npm](https://img.shields.io/npm/v/typespacing.svg)](https://www.npmjs.com/package/typespacing)
-[![Live Demo](https://img.shields.io/badge/demo-live-0a66ff?style=flat-square)](https://cyocun.github.io/typespacing/)
-[![GitHub Pages](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml/badge.svg)](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml)
+[![npm](https://img.shields.io/npm/v/visual-kerning.svg)](https://www.npmjs.com/package/visual-kerning)
+[![Live Demo](https://img.shields.io/badge/demo-live-0a66ff?style=flat-square)](https://ie3jp.github.io/visual-kerning/)
+[![GitHub Pages](https://github.com/ie3jp/visual-kerning/actions/workflows/deploy-demo-pages.yml/badge.svg)](https://github.com/ie3jp/visual-kerning/actions/workflows/deploy-demo-pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)](./LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/cyocun)
 
@@ -15,9 +15,9 @@ and apply it to production DOM without tying yourself to a specific framework.
 
 ## Demo
 
-**Start here:** [Open the live demo](https://cyocun.github.io/typespacing/)
+**Start here:** [Open the live demo](https://ie3jp.github.io/visual-kerning/)
 
-![typespacing demo](.github/readme/demo.gif)
+![visual-kerning demo](.github/readme/demo.gif)
 
 - Local demo: `npm run demo`
 - Static build: `npm run demo:build`
@@ -25,12 +25,12 @@ and apply it to production DOM without tying yourself to a specific framework.
 > The editing UI is intended for development and staging.
 > In production, use `createKerningEditor({ editable: false, kerning })`.
 
-## Why typespacing
+## Why visual-kerning
 
 CSS `letter-spacing` is great when one value is enough.
 It becomes limiting when you need pair-by-pair adjustments in real UI.
 
-`typespacing` is built for teams who want a practical workflow like this:
+`visual-kerning` is built for teams who want a practical workflow like this:
 
 1. Tune spacing visually in the browser during development or staging.
 2. Export the result as JSON.
@@ -54,13 +54,13 @@ Main strengths:
 ## Install
 
 ```bash
-npm install typespacing
+npm install visual-kerning
 ```
 
 ## The intended workflow
 
 ```ts
-import { createKerningEditor } from 'typespacing'
+import { createKerningEditor } from 'visual-kerning'
 ```
 
 **1. Edit** — mount the editor in development or staging.
@@ -83,7 +83,7 @@ editor.mount()
 
 ## What it works well for
 
-`typespacing` is aimed at text that matters visually on a normal website.
+`visual-kerning` is aimed at text that matters visually on a normal website.
 
 - Headings
 - Hero copy
@@ -102,14 +102,14 @@ marketing sites, portfolios, and editorial-style UI.
 - Inline formatting inside the target element
   — e.g. `<span>`, `<em>`, `<strong>`, `<b>`, `<i>`
 
-When editing, `typespacing` wraps visible characters in spans
+When editing, `visual-kerning` wraps visible characters in spans
 while trying to preserve useful inline structure.
 
 To exclude an element from editing,
-add `data-typespacing-ignore`:
+add `data-visual-kerning-ignore`:
 
 ```html
-<div data-typespacing-ignore>This text will not be editable.</div>
+<div data-visual-kerning-ignore>This text will not be editable.</div>
 ```
 
 ## Public API
@@ -189,7 +189,7 @@ The browsing and editing workflow itself is browser-specific:
 
 ## Why `margin-left` instead of `letter-spacing`
 
-typespacing wraps each visible character in a `<span>`
+visual-kerning wraps each visible character in a `<span>`
 and controls spacing via `margin-left` on each span.
 This is a deliberate choice over `letter-spacing`:
 

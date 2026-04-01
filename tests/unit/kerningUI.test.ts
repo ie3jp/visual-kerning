@@ -40,14 +40,14 @@ describe('createKerningEditor', () => {
     flushAnimationFrame()
     flushAnimationFrame()
 
-    expect(document.querySelector('.typespacing-panel strong')?.textContent).toBe('typespacing')
+    expect(document.querySelector('.visual-kerning-panel strong')?.textContent).toBe('visual-kerning')
 
-    const marker = document.querySelector('.typespacing-gap-marker')
+    const marker = document.querySelector('.visual-kerning-gap-marker')
     expect(marker).not.toBeNull()
 
     flushAnimationFrame()
 
-    expect(document.querySelector('.typespacing-gap-marker')).toBe(marker)
+    expect(document.querySelector('.visual-kerning-gap-marker')).toBe(marker)
 
     editor.unmount()
   })
@@ -82,6 +82,32 @@ describe('createKerningEditor', () => {
     editor.plugin.resetAll()
 
     expect(document.querySelector('#title')?.innerHTML).toBe('Type <em>Spacing</em>')
+
+    editor.unmount()
+  })
+
+  it('collapses and expands the panel from the toggle button', () => {
+    originalRequestAnimationFrame = window.requestAnimationFrame
+    originalCancelAnimationFrame = window.cancelAnimationFrame
+    window.requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+      rafQueue.push(cb)
+      return rafQueue.length
+    })
+    window.cancelAnimationFrame = vi.fn()
+
+    const editor = createKerningEditor({ locale: 'en' })
+    editor.plugin.enabled.value = true
+    editor.mount()
+    flushAnimationFrame()
+
+    const collapseBtn = document.querySelector('.js-collapse') as HTMLButtonElement | null
+    const panelBody = document.querySelector('.js-panel-body') as HTMLDivElement | null
+
+    collapseBtn?.click()
+    expect(panelBody?.hidden).toBe(true)
+
+    collapseBtn?.click()
+    expect(panelBody?.hidden).toBe(false)
 
     editor.unmount()
   })

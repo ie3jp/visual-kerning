@@ -1,9 +1,10 @@
 import type { KerningExport } from './applyKerning'
 import { sanitizePersistedKerningData, type PersistedKerningArea } from './validation'
 
-export const TOOL_NAME = 'typespacing'
+export const TOOL_NAME = 'visual-kerning'
 export const LOG_PREFIX = `[${TOOL_NAME}]`
-export const STORAGE_KEY = 'typespacing-editor-data'
+export const STORAGE_KEY = 'visual-kerning-editor-data'
+const LEGACY_STORAGE_KEY = 'typespacing-editor-data'
 
 type StorageName = 'localStorage' | 'sessionStorage'
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -72,14 +73,34 @@ function readPersistedRaw(): string | null {
   if (!backend) return null
 
   try {
-    return backend.storage.getItem(STORAGE_KEY)
+    const current = backend.storage.getItem(STORAGE_KEY)
+    if (current !== null) return current
+
+    const legacy = backend.storage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy !== null) {
+      backend.storage.setItem(STORAGE_KEY, legacy)
+      backend.storage.removeItem(LEGACY_STORAGE_KEY)
+      return legacy
+    }
+
+    return null
   } catch (error) {
     console.warn(`${LOG_PREFIX} Failed to read ${backend.name} data.`, error)
     if (backend.name === 'localStorage') {
       const fallback = fallbackToSessionStorage(error)
       if (!fallback) return null
       try {
-        return fallback.storage.getItem(STORAGE_KEY)
+        const current = fallback.storage.getItem(STORAGE_KEY)
+        if (current !== null) return current
+
+        const legacy = fallback.storage.getItem(LEGACY_STORAGE_KEY)
+        if (legacy !== null) {
+          fallback.storage.setItem(STORAGE_KEY, legacy)
+          fallback.storage.removeItem(LEGACY_STORAGE_KEY)
+          return legacy
+        }
+
+        return null
       } catch (fallbackError) {
         console.warn(`${LOG_PREFIX} Failed to read sessionStorage data.`, fallbackError)
       }
@@ -93,16 +114,26 @@ function writePersistedRaw(raw: string | null) {
   if (!backend) return
 
   try {
-    if (raw === null) backend.storage.removeItem(STORAGE_KEY)
-    else backend.storage.setItem(STORAGE_KEY, raw)
+    if (raw === null) {
+      backend.storage.removeItem(STORAGE_KEY)
+      backend.storage.removeItem(LEGACY_STORAGE_KEY)
+    } else {
+      backend.storage.setItem(STORAGE_KEY, raw)
+      backend.storage.removeItem(LEGACY_STORAGE_KEY)
+    }
     return
   } catch (error) {
     if (backend.name === 'localStorage') {
       backend = fallbackToSessionStorage(error)
       if (!backend) return
       try {
-        if (raw === null) backend.storage.removeItem(STORAGE_KEY)
-        else backend.storage.setItem(STORAGE_KEY, raw)
+        if (raw === null) {
+          backend.storage.removeItem(STORAGE_KEY)
+          backend.storage.removeItem(LEGACY_STORAGE_KEY)
+        } else {
+          backend.storage.setItem(STORAGE_KEY, raw)
+          backend.storage.removeItem(LEGACY_STORAGE_KEY)
+        }
         return
       } catch (fallbackError) {
         console.warn(`${LOG_PREFIX} Failed to write sessionStorage data.`, fallbackError)

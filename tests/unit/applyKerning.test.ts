@@ -207,6 +207,6 @@ describe('applyKerning helpers', () => {
         font: { family: 'sans', weight: '400', size: '16px' },
         kerning: ['120'],
       }],
-    } as unknown as KerningExport)).toThrow('[typespacing] Invalid kerning export payload.')
+    } as unknown as KerningExport)).toThrow('[visual-kerning] Invalid kerning export payload.')
   })
 })

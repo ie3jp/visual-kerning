@@ -1,6 +1,6 @@
 {
-  "name": "typespacing",
-  "version": "0.9.0",
+  "name": "visual-kerning",
+  "version": "0.10.0",
   "description": "Browser typography spacing toolkit with visual kerning editing. Framework-agnostic.",
   "private": false,
   "type": "module",
@@ -44,12 +44,12 @@
   "author": "cyocun",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ie3jp/typespacing.git"
+    "url": "git+https://github.com/ie3jp/visual-kerning.git"
   },
   "bugs": {
-    "url": "https://github.com/ie3jp/typespacing/issues"
+    "url": "https://github.com/ie3jp/visual-kerning/issues"
   },
-  "homepage": "https://github.com/ie3jp/typespacing#readme",
+  "homepage": "https://github.com/ie3jp/visual-kerning#readme",
   "devDependencies": {
     "@playwright/test": "^1.53.0",
     "jsdom": "^26.1.0",

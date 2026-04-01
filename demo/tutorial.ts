@@ -5,7 +5,7 @@
 
 import type { TourStep } from './tour'
 
-export const TUTORIAL_DONE_KEY = 'typespacing-tutorial-done'
+export const TUTORIAL_DONE_KEY = 'visual-kerning-tutorial-done'
 
 type OnEnable = (handler: () => void) => (() => void)
 
@@ -28,7 +28,7 @@ function animateJsonDownload(anchor: HTMLElement): Promise<void> {
   const startY = rect.top + rect.height / 2 - 30
 
   const icon = document.createElement('div')
-  icon.setAttribute('data-typespacing-ignore', 'true')
+  icon.setAttribute('data-visual-kerning-ignore', 'true')
 
   // SVG はハードコードされた静的リテラル（ユーザー入力なし）
   const parser = new DOMParser()
@@ -118,7 +118,7 @@ export function buildTutorialSteps(onEnable: OnEnable): TourStep[] {
         { type: 'run', fn: (ctx) => {
           const el = document.querySelector(TARGET_TEXT) as HTMLElement | null
           if (!el) return
-          const spans = el.querySelectorAll('.typespacing-char')
+          const spans = el.querySelectorAll('.visual-kerning-char')
           if (spans.length === 0) {
             el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 0, clientY: 0 }))
             return
@@ -200,7 +200,7 @@ export function buildTutorialSteps(onEnable: OnEnable): TourStep[] {
         { type: 'caption', target: '.js-export', position: 'left', content: [
           { strong: 'Export' }, ' \u2014 copies kerning data as JSON.',
           '\n',
-          'Apply it with the typespacing library and you\'re done!',
+          'Apply it with the visual-kerning library and you\'re done!',
         ]},
         { type: 'wait', ms: 1500 },
         { type: 'run', fn: async () => {

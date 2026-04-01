@@ -238,7 +238,7 @@ function createStyleText(options: KerningUIRootOptions): string {
 
 export function createKerningUIRoot(options: KerningUIRootOptions): KerningUIRootElements {
   const root = createDiv(options.overlayClass)
-  root.setAttribute('data-typespacing-ignore', 'true')
+  root.setAttribute('data-visual-kerning-ignore', 'true')
 
   const styleEl = document.createElement('style')
   styleEl.textContent = createStyleText(options)

@@ -71,4 +71,68 @@ describe('createKerningPlugin persistence', () => {
 
     plugin.unmount()
   })
+
+  it('toggles enabled state with Ctrl/Cmd+K and emits lifecycle events', () => {
+    const plugin = createKerningPlugin()
+    const onEnable = vi.fn()
+    const onDisable = vi.fn()
+    plugin.on('enable', onEnable)
+    plugin.on('disable', onDisable)
+
+    plugin.mount()
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+    }))
+    expect(plugin.enabled.value).toBe(true)
+    expect(onEnable).toHaveBeenCalledTimes(1)
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+    }))
+    expect(plugin.enabled.value).toBe(false)
+    expect(onDisable).toHaveBeenCalledTimes(1)
+
+    plugin.unmount()
+  })
+
+  it('migrates legacy storage keys on load', () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = '<h1 id="title">AV</h1>'
+    localStorage.setItem('typespacing-editor-data', JSON.stringify({
+      '#title': {
+        text: 'AV',
+        kerning: [120, 0],
+        font: { family: 'sans-serif', weight: '700', size: '42px' },
+      },
+    }))
+
+    const plugin = createKerningPlugin()
+    plugin.mount()
+    vi.runAllTimers()
+
+    expect(plugin.areas.value.has('#title')).toBe(true)
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
+    expect(localStorage.getItem('typespacing-editor-data')).toBeNull()
+
+    plugin.unmount()
+  })
+
+  it('still respects the legacy ignore attribute', () => {
+    document.body.innerHTML = '<div data-typespacing-ignore><p id="title">AV</p></div>'
+    const plugin = createKerningPlugin()
+    plugin.enabled.value = true
+    plugin.mount()
+
+    const title = document.getElementById('title')
+    title?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 5, clientY: 5 }))
+
+    expect(plugin.activeSelector.value).toBeNull()
+
+    plugin.unmount()
+  })
 })

@@ -4,7 +4,7 @@
 
 ## Project summary
 
-- ライブラリ名: `typespacing`
+- ライブラリ名: `visual-kerning`
 - 目的: ブラウザ上で調整したカーニングをJSON化し、DOMに適用する
 - 主要公開API:
   - `createKerningEditor` — 統合API（editable オプションで編集/本番切替）

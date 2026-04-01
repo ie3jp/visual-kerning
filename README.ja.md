@@ -1,10 +1,10 @@
-# typespacing
+# visual-kerning
 
 [English](./README.md) | [日本語](./README.ja.md)
 
-[![npm](https://img.shields.io/npm/v/typespacing.svg)](https://www.npmjs.com/package/typespacing)
-[![Live Demo](https://img.shields.io/badge/demo-live-0a66ff?style=flat-square)](https://cyocun.github.io/typespacing/)
-[![GitHub Pages](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml/badge.svg)](https://github.com/cyocun/typespacing/actions/workflows/deploy-demo-pages.yml)
+[![npm](https://img.shields.io/npm/v/visual-kerning.svg)](https://www.npmjs.com/package/visual-kerning)
+[![Live Demo](https://img.shields.io/badge/demo-live-0a66ff?style=flat-square)](https://ie3jp.github.io/visual-kerning/)
+[![GitHub Pages](https://github.com/ie3jp/visual-kerning/actions/workflows/deploy-demo-pages.yml/badge.svg)](https://github.com/ie3jp/visual-kerning/actions/workflows/deploy-demo-pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square)](./LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/cyocun)
 
@@ -15,9 +15,9 @@
 
 ## Demo
 
-**まずはここから:** [ライブデモを開く](https://cyocun.github.io/typespacing/)
+**まずはここから:** [ライブデモを開く](https://ie3jp.github.io/visual-kerning/)
 
-![typespacing demo](.github/readme/demo.gif)
+![visual-kerning demo](.github/readme/demo.gif)
 
 - ローカルデモ: `npm run demo`
 - 静的ビルド: `npm run demo:build`
@@ -25,12 +25,12 @@
 > 編集UIは主に開発環境やステージング環境で使う想定です。
 > 本番では `createKerningEditor({ editable: false, kerning })` で適用します。
 
-## typespacing でできること
+## visual-kerning でできること
 
 CSS の `letter-spacing` は1つの値で十分なときには便利ですが、
 実際のUIで文字ペアごとの調整をしたくなると限界があります。
 
-`typespacing` は次のような運用を想定しています。
+`visual-kerning` は次のような運用を想定しています。
 
 1. 開発中またはステージング中にブラウザ上で視覚的に字間を調整する
 2. 結果を JSON として書き出す
@@ -39,7 +39,7 @@ CSS の `letter-spacing` は1つの値で十分なときには便利ですが、
 主な特徴:
 
 - **CSSでは不可能なペア単位の字間制御**
-  — `letter-spacing` は全文字一律。typespacing は1ギャップずつ個別に調整できる
+  — `letter-spacing` は全文字一律。visual-kerning は1ギャップずつ個別に調整できる
 - **Illustratorライクな操作**
   — Alt + 矢印キーで微調整/粗調整、ブラウザ上で直接編集
 - **編集から本番まで1つのAPI**
@@ -54,13 +54,13 @@ CSS の `letter-spacing` は1つの値で十分なときには便利ですが、
 ## Install
 
 ```bash
-npm install typespacing
+npm install visual-kerning
 ```
 
 ## 基本的な使い方
 
 ```ts
-import { createKerningEditor } from 'typespacing'
+import { createKerningEditor } from 'visual-kerning'
 ```
 
 **1. 編集** — 開発環境やステージングでエディタをマウント。
@@ -83,7 +83,7 @@ editor.mount()
 
 ## 向いている用途
 
-`typespacing` は、Webサイト上で見た目の印象が重要なテキストに向いています。
+`visual-kerning` は、Webサイト上で見た目の印象が重要なテキストに向いています。
 
 - 見出し
 - ヒーローコピー
@@ -106,10 +106,10 @@ editor.mount()
 可視文字を `span` 化して処理します。
 
 特定の要素を編集対象から除外するには
-`data-typespacing-ignore` を付与します:
+`data-visual-kerning-ignore` を付与します:
 
 ```html
-<div data-typespacing-ignore>このテキストは編集対象外になります。</div>
+<div data-visual-kerning-ignore>このテキストは編集対象外になります。</div>
 ```
 
 ## Public API
@@ -189,7 +189,7 @@ off()
 
 ## なぜ `letter-spacing` ではなく `margin-left` か
 
-typespacing は各文字を `<span>` で囲み、
+visual-kerning は各文字を `<span>` で囲み、
 `margin-left` で字間を制御します。
 `letter-spacing` を使わないのは意図的な設計です。
 

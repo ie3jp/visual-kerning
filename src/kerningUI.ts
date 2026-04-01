@@ -9,11 +9,12 @@ import {
   seedPersistedKerningData,
   type KerningEditorPlugin,
 } from './kerningEditor'
+import { createKerningUIPanelController } from './kerningUIPanelController'
 import { createKerningUIRoot } from './kerningUIRoot'
 
 interface MergedRect { x: number; y: number; w: number; h: number }
 
-const EDITOR_CLASS_PREFIX = 'typespacing'
+const EDITOR_CLASS_PREFIX = 'visual-kerning'
 
 function editorClass(name: string) {
   return `${EDITOR_CLASS_PREFIX}-${name}`
@@ -80,13 +81,6 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
   let pendingDomReady: (() => void) | null = null
   let rafId = 0
   let copiedTimer = 0
-  let collapsed = false
-  let panelPositioned = false
-  let panelX = 0
-  let panelY = 0
-  let dragPointerId: number | null = null
-  let dragOffsetX = 0
-  let dragOffsetY = 0
   let lastAreaGuidesKey = ''
   let lastMarkersKey = ''
   let lastSelectionKey = ''
@@ -141,6 +135,13 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
     resetLabel: t.reset,
     helpText: t.helpText,
     copiedLabel: t.copied,
+  })
+  const panelController = createKerningUIPanelController({
+    panelEl,
+    panelBodyEl,
+    collapseBtn,
+    getCollapseLabel: () => t.collapse,
+    getExpandLabel: () => t.expand,
   })
   let warnTimer = 0
   let warnDispose: (() => void) | null = null
@@ -217,45 +218,6 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
       el.style.height = `${row.h}px`
       selectionContainer.appendChild(el)
     }
-  }
-
-  function clampPanelPosition(x: number, y: number) {
-    const margin = 12
-    const width = panelEl.offsetWidth || 280
-    const height = panelEl.offsetHeight || 120
-    return {
-      x: Math.min(Math.max(margin, x), Math.max(margin, window.innerWidth - width - margin)),
-      y: Math.min(Math.max(margin, y), Math.max(margin, window.innerHeight - height - margin)),
-    }
-  }
-
-  function syncPanelPosition() {
-    const next = clampPanelPosition(panelX, panelY)
-    panelX = next.x
-    panelY = next.y
-    panelEl.style.left = `${panelX}px`
-    panelEl.style.top = `${panelY}px`
-  }
-
-  function positionPanelDefault() {
-    if (!panelPositioned) {
-      const rect = panelEl.getBoundingClientRect()
-      panelX = window.innerWidth - rect.width - 16
-      panelY = window.innerHeight - rect.height - 16
-      panelPositioned = true
-    }
-    syncPanelPosition()
-  }
-
-  function setCollapsed(next: boolean) {
-    collapsed = next
-    panelEl.classList.toggle('is-collapsed', collapsed)
-    panelBodyEl.hidden = collapsed
-    const label = collapsed ? t.expand : t.collapse
-    collapseBtn.textContent = collapsed ? '+' : '−'
-    collapseBtn.setAttribute('aria-label', label)
-    collapseBtn.title = label
-    window.requestAnimationFrame(syncPanelPosition)
   }
 
   function showWarn(message: string) {
@@ -351,40 +313,15 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
   }
 
   function onCollapseClick() {
-    setCollapsed(!collapsed)
-  }
-
-  function onPointerMove(e: PointerEvent) {
-    if (dragPointerId !== e.pointerId) return
-    panelX = e.clientX - dragOffsetX
-    panelY = e.clientY - dragOffsetY
-    syncPanelPosition()
-  }
-
-  function onPointerEnd(e: PointerEvent) {
-    if (dragPointerId !== e.pointerId) return
-    dragPointerId = null
-    panelEl.classList.remove('is-dragging')
-    window.removeEventListener('pointermove', onPointerMove)
-    window.removeEventListener('pointerup', onPointerEnd)
-    window.removeEventListener('pointercancel', onPointerEnd)
+    panelController.toggleCollapsed()
   }
 
   function onDragStart(e: PointerEvent) {
-    const target = e.target as HTMLElement
-    if (target.closest('button')) return
-    const rect = panelEl.getBoundingClientRect()
-    dragPointerId = e.pointerId
-    dragOffsetX = e.clientX - rect.left
-    dragOffsetY = e.clientY - rect.top
-    panelEl.classList.add('is-dragging')
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerEnd)
-    window.addEventListener('pointercancel', onPointerEnd)
+    panelController.startDrag(e)
   }
 
   function onResize() {
-    if (mounted && panelPositioned) syncPanelPosition()
+    if (mounted) panelController.onResize()
   }
 
   const editor: KerningEditor = {
@@ -410,8 +347,8 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
       lastMarkersKey = ''
       lastSelectionKey = ''
       document.body.appendChild(root)
-      setCollapsed(false)
-      positionPanelDefault()
+      panelController.setCollapsed(false)
+      panelController.positionDefault()
       dragHandleEl.addEventListener('pointerdown', onDragStart)
       collapseBtn.addEventListener('click', onCollapseClick)
       compareBtn.addEventListener('click', onCompareClick)
@@ -449,9 +386,7 @@ export function createKerningEditor(options: KerningEditorOptions = {}): Kerning
       exportBtn.removeEventListener('click', downloadJSON)
       resetBtn.removeEventListener('click', onResetClick)
       window.removeEventListener('resize', onResize)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerEnd)
-      window.removeEventListener('pointercancel', onPointerEnd)
+      panelController.dispose()
       root.remove()
     },
   }

@@ -6,7 +6,7 @@ import { buildTutorialSteps, simulateCmdK, TUTORIAL_DONE_KEY } from './tutorial'
 
 type PersistedArea = { text: string; kerning: number[]; indent: number; font: { family: string; weight: string; size: string } }
 
-const IMPORTED_KEY = 'typespacing-editor-imported'
+const IMPORTED_KEY = 'visual-kerning-editor-imported'
 
 function areasToPersistedMap(areas: typeof kerningData.areas): Record<string, PersistedArea> {
   const persisted: Record<string, PersistedArea> = {}
@@ -43,7 +43,7 @@ const tour = createTour({
   doneKey: TUTORIAL_DONE_KEY,
   steps: buildTutorialSteps((handler) => editor.plugin.on('enable', handler)),
   onBeforeReplay: () => simulateCmdK(),
-  ignoreAttr: 'data-typespacing-ignore',
+  ignoreAttr: 'data-visual-kerning-ignore',
 })
 tour.start()
 
@@ -192,7 +192,7 @@ resizeHandle.addEventListener('pointerup', stopResize)
 resizeHandle.addEventListener('pointercancel', stopResize)
 
 // --- Import JSON via drag & drop on editor panel ---
-const panel = document.querySelector('.typespacing-panel') as HTMLElement | null
+const panel = document.querySelector('.visual-kerning-panel') as HTMLElement | null
 if (panel) {
   const dropOverlay = document.createElement('div')
   dropOverlay.textContent = 'Drop JSON to import'
@@ -245,14 +245,14 @@ if (panel) {
       try {
         const data = JSON.parse(text)
         if (!data.areas || !Array.isArray(data.areas)) {
-          console.warn('[typespacing] Invalid kerning JSON')
+          console.warn('[visual-kerning] Invalid kerning JSON')
           return
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(areasToPersistedMap(data.areas)))
         localStorage.setItem(IMPORTED_KEY, '1')
         location.reload()
       } catch {
-        console.warn('[typespacing] Failed to parse dropped JSON')
+        console.warn('[visual-kerning] Failed to parse dropped JSON')
       }
     })
   })
@@ -261,10 +261,10 @@ if (panel) {
 // Export HTML
 exportBtn.addEventListener('click', () => {
   const clone = preview.cloneNode(true) as HTMLElement
-  // typespacing の編集用クラスを除去
+  // visual-kerning の編集用クラスを除去
   clone.classList.remove(ACTIVE_CLASS, MODIFIED_CLASS, 'sandbox-preview')
   clone.querySelectorAll('[class]').forEach(el => {
-    const classes = Array.from(el.classList).filter(c => !c.startsWith('typespacing-'))
+    const classes = Array.from(el.classList).filter(c => !c.startsWith('visual-kerning-'))
     if (classes.length === 0) {
       el.removeAttribute('class')
     } else {
@@ -288,7 +288,7 @@ exportBtn.addEventListener('click', () => {
   const blob = new Blob([html], { type: 'text/html' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = 'typespacing-export.html'
+  a.download = 'visual-kerning-export.html'
   a.click()
   URL.revokeObjectURL(a.href)
 })

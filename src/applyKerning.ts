@@ -83,7 +83,7 @@ export function normalizeKerningForText(kerning: number[], text: string): number
 
 function warnKerningLengthMismatch(selector: string, expected: number, actual: number) {
   console.warn(
-    `[typespacing] Kerning length mismatch for ${selector}: expected ${expected}, got ${actual}. Padding/truncating to match visible characters.`,
+    `[visual-kerning] Kerning length mismatch for ${selector}: expected ${expected}, got ${actual}. Padding/truncating to match visible characters.`,
   )
 }
 
@@ -351,20 +351,20 @@ export function applyKerning(
 
   if (warnMissing && data.version !== undefined && data.version > KERNING_FORMAT_VERSION) {
     console.warn(
-      `[typespacing] Data format version ${data.version} is newer than supported version ${KERNING_FORMAT_VERSION}. Some features may not work correctly.`,
+      `[visual-kerning] Data format version ${data.version} is newer than supported version ${KERNING_FORMAT_VERSION}. Some features may not work correctly.`,
     )
   }
 
   for (const area of data.areas) {
     const el = document.querySelector(area.selector) as HTMLElement | null
     if (!el) {
-      if (warnMissing) console.warn(`[typespacing] Element not found: ${area.selector}`)
+      if (warnMissing) console.warn(`[visual-kerning] Element not found: ${area.selector}`)
       continue
     }
 
     if (warnMissing && el.tagName === 'SPAN') {
       console.warn(
-        `[typespacing] Target element is a <span>: "${area.selector}". `
+        `[visual-kerning] Target element is a <span>: "${area.selector}". `
         + 'Wrapping may produce nested spans. Consider using a block-level element (e.g. <p>, <div>, <h1>) as the kerning target.',
       )
     }
@@ -384,7 +384,7 @@ export function applyKerning(
     } else {
       const text = collectKerningText(el)
       if (text !== area.text && warnMissing) {
-        console.warn(`[typespacing] Text mismatch for ${area.selector}: expected "${area.text}", got "${text}"`)
+        console.warn(`[visual-kerning] Text mismatch for ${area.selector}: expected "${area.text}", got "${text}"`)
       }
       const normalizedKerning = normalizeKerningForText(area.kerning, text)
       if (warnMissing && area.kerning.length !== normalizedKerning.length) {

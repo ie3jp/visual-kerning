@@ -4,7 +4,7 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
   await page.goto('/')
 
   await expect
-    .poll(async () => page.locator('.typespacing-overlay').evaluate((el) => getComputedStyle(el).display))
+    .poll(async () => page.locator('.visual-kerning-overlay').evaluate((el) => getComputedStyle(el).display))
     .toBe('block')
 
   await expect(page.locator('.js-panel')).toContainText('Drag the header to move the palette')
@@ -18,12 +18,12 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true }))
   })
 
-  await expect(hero).toHaveClass(/typespacing-modified/)
+  await expect(hero).toHaveClass(/visual-kerning-modified/)
   await expect
     .poll(async () => hero.evaluate((el) => getComputedStyle(el).outlineStyle))
     .not.toBe('none')
 
-  const firstSpan = page.locator('.hero .typespacing-char').first()
+  const firstSpan = page.locator('.hero .visual-kerning-char').first()
   const before = await firstSpan.evaluate((el) => ({
     marginRight: getComputedStyle(el).marginRight,
     marginLeft: getComputedStyle(el).marginLeft,
@@ -71,7 +71,7 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
   await aside.click()
   await expect(page.locator('.aside p br')).toHaveCount(0)
 
-  const stackedFirstChar = page.locator('.vertical-demo .typespacing-char').first()
+  const stackedFirstChar = page.locator('.vertical-demo .visual-kerning-char').first()
   await stackedFirstChar.click()
   const beforeVerticalMove = await page.evaluate(() => window.__kerningDemo?.plugin.cursorRect.value?.y ?? null)
   await page.keyboard.press('ArrowDown')
@@ -84,7 +84,7 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
     const plugin = window.__kerningDemo?.plugin
     const root = document.querySelector('.vertical-demo')
     if (!plugin || !root) return null
-    const spans = Array.from(root.querySelectorAll('.typespacing-char'))
+    const spans = Array.from(root.querySelectorAll('.visual-kerning-char'))
     const index = spans.findIndex((span, i) => {
       const next = spans[i + 1]
       if (!next) return false
@@ -109,7 +109,7 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
     const plugin = window.__kerningDemo?.plugin
     const root = document.querySelector('.vertical-demo')
     if (!plugin || !root) return
-    const spans = Array.from(root.querySelectorAll('.typespacing-char'))
+    const spans = Array.from(root.querySelectorAll('.visual-kerning-char'))
     const index = spans.findIndex((span, i) => {
       const next = spans[i + 1]
       if (!next) return false
@@ -122,6 +122,6 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
     plugin.cursorGap.value = index
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true }))
   })
-  const secondLineMargin = await page.locator('.vertical-demo .typespacing-char').nth(4).evaluate((el) => getComputedStyle(el).marginLeft)
+  const secondLineMargin = await page.locator('.vertical-demo .visual-kerning-char').nth(4).evaluate((el) => getComputedStyle(el).marginLeft)
   expect(secondLineMargin).not.toBe('0px')
 })
