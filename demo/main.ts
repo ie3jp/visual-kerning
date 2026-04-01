@@ -170,8 +170,14 @@ const googleFontStatus = document.getElementById('sb-font-google-status') as HTM
 const googleFontLoadBtn = document.getElementById('sb-font-google-load') as HTMLButtonElement
 const localFontStatus = document.getElementById('sb-font-local-status') as HTMLSpanElement
 const localFontLoadBtn = document.getElementById('sb-font-local-load') as HTMLButtonElement
+const luckyBtn = document.getElementById('sb-lucky') as HTMLButtonElement
+const messyBtn = document.getElementById('sb-messy') as HTMLButtonElement
+const luckyStatus = document.getElementById('sb-lucky-status') as HTMLSpanElement
 const sizeInput = document.getElementById('sb-size') as HTMLInputElement
 const weightSelect = document.getElementById('sb-weight') as HTMLSelectElement
+const weightRange = document.getElementById('sb-weight-range') as HTMLInputElement
+const weightRangeWrap = document.getElementById('sb-weight-range-wrap') as HTMLDivElement
+const weightOutput = document.getElementById('sb-weight-output') as HTMLOutputElement
 const textInput = document.getElementById('sb-input') as HTMLTextAreaElement
 const preview = document.getElementById('sb-preview') as HTMLParagraphElement
 const exportBtn = document.getElementById('sb-export') as HTMLButtonElement
@@ -364,6 +370,29 @@ document.querySelectorAll('.sandbox-header .choices').forEach(el => {
 })
 
 let activeFontSource: FontSource = 'google'
+const VARIABLE_FONTS = new Set([
+  'Inter',
+  'Roboto',
+  'Open Sans',
+  'Montserrat',
+  'Lato',
+  'Oswald',
+  'Raleway',
+  'Poppins',
+  'Playfair Display',
+  'Merriweather',
+  'Space Grotesk',
+  'DM Sans',
+  'Noto Sans JP',
+  'Noto Serif JP',
+  'Source Code Pro',
+  'JetBrains Mono',
+  'IBM Plex Sans',
+  'IBM Plex Serif',
+  'Archivo',
+  'Sora',
+  'Outfit',
+])
 
 function getSelectedFont(): { family: string; source: FontSource } {
   if (activeFontSource === 'local' && fontLocalSelect.value) {
@@ -372,18 +401,43 @@ function getSelectedFont(): { family: string; source: FontSource } {
   return { family: fontGoogleSelect.value, source: 'google' }
 }
 
+
+function isVariableFont(family: string, source: FontSource): boolean {
+  return source === 'google' && VARIABLE_FONTS.has(family)
+}
+
+function getWeightValue(): string {
+  if (weightRangeWrap && !weightRangeWrap.hidden) return weightRange.value
+  return weightSelect.value
+}
+
+function syncWeightControls(value: string) {
+  weightSelect.value = value
+  if (weightRange) weightRange.value = value
+  if (weightOutput) weightOutput.textContent = value
+}
+
+function updateWeightUI() {
+  const { family, source } = getSelectedFont()
+  const useRange = isVariableFont(family, source)
+  if (weightRangeWrap) weightRangeWrap.hidden = !useRange
+  weightSelect.hidden = useRange
+  syncWeightControls(getWeightValue())
+}
+
 function updatePreviewStyle() {
   const { family, source } = getSelectedFont()
   const size = sizeInput.value
-  const weight = weightSelect.value
+  const weight = getWeightValue()
   if (source === 'google') loadGoogleFont(family, weight)
   preview.style.fontFamily = `'${family}', ${source === 'google' ? 'sans-serif' : 'system-ui, sans-serif'}`
   preview.style.fontSize = `${size}px`
   preview.style.fontWeight = weight
+  const sourceLabel = source === 'google' ? 'Google Fonts' : 'Local Fonts'
+  setLuckyStatus(`${sourceLabel}: ${family}.`)
 }
 
-function updatePreviewText() {
-  const text = textInput.value
+function resetPreviewArea() {
   // 既存のカーニング状態をリセットするため、エディタのareaを削除
   const areas = editor.plugin.areas.value
   for (const [selector, area] of areas) {
@@ -393,20 +447,116 @@ function updatePreviewText() {
       break
     }
   }
+}
+
+function updatePreviewText() {
+  const text = textInput.value
+  resetPreviewArea()
   preview.textContent = text
 }
 
+function normalizeFontFamily(name: string): string {
+  const safe = name.replace(/"/g, '\\"')
+  const needsQuote = /[\s,]/.test(safe)
+  return needsQuote ? `"${safe}"` : safe
+}
+
+function setLuckyStatus(message: string, isError = false) {
+  if (!luckyStatus) return
+  luckyStatus.textContent = message
+  luckyStatus.classList.toggle('is-error', isError)
+  luckyStatus.style.display = message ? 'inline' : 'none'
+}
+
+function getLuckyContext(): { fonts: string[]; text: string } | null {
+  if (localFontsLoading) {
+    setLuckyStatus('Local fonts are loading...')
+    return null
+  }
+  if (!localFontsLoaded) {
+    setLuckyStatus(
+      queryLocalFonts
+        ? 'Load local fonts first (click Load).'
+        : 'Local font access is available in Chrome/Edge.',
+      true,
+    )
+    return null
+  }
+  const fonts = Array.from(fontLocalSelect.options).map(option => option.value).filter(Boolean)
+  if (fonts.length === 0) {
+    setLuckyStatus('No local fonts available.', true)
+    return null
+  }
+  const text = textInput.value
+  if (!text) {
+    setLuckyStatus('Type some text first.', true)
+    return null
+  }
+  return { fonts, text }
+}
+
+function applyLucky() {
+  const context = getLuckyContext()
+  if (!context) return
+  const font = context.fonts[Math.floor(Math.random() * context.fonts.length)]
+  activeFontSource = 'local'
+  fontLocalSelect.value = font
+  localSelect?.setChoiceByValue(font)
+  updateWeightUI()
+  updatePreviewStyle()
+  updatePreviewText()
+  setLuckyStatus(`Lucky font: ${font}.`)
+}
+
+function applyMessy() {
+  const context = getLuckyContext()
+  if (!context) return
+  activeFontSource = 'local'
+  updateWeightUI()
+  updatePreviewStyle()
+  resetPreviewArea()
+  const fragment = document.createDocumentFragment()
+  for (const char of context.text) {
+    const span = document.createElement('span')
+    span.textContent = char
+    const font = context.fonts[Math.floor(Math.random() * context.fonts.length)]
+    span.style.fontFamily = `${normalizeFontFamily(font)}, system-ui, sans-serif`
+    fragment.append(span)
+  }
+  preview.replaceChildren(fragment)
+  setLuckyStatus('Messy feel applied.')
+}
+
 textInput.addEventListener('input', updatePreviewText)
+updateWeightUI()
+updatePreviewStyle()
 fontGoogleSelect.addEventListener('change', () => {
   activeFontSource = 'google'
+  updateWeightUI()
   updatePreviewStyle()
 })
 fontLocalSelect.addEventListener('change', () => {
   activeFontSource = 'local'
+  updateWeightUI()
   updatePreviewStyle()
 })
 sizeInput.addEventListener('input', updatePreviewStyle)
-weightSelect.addEventListener('change', updatePreviewStyle)
+weightSelect.addEventListener('change', () => {
+  syncWeightControls(weightSelect.value)
+  updatePreviewStyle()
+})
+if (weightRange) {
+  weightRange.addEventListener('input', () => {
+    syncWeightControls(weightRange.value)
+    updatePreviewStyle()
+  })
+}
+if (luckyBtn) {
+  luckyBtn.addEventListener('click', applyLucky)
+}
+if (messyBtn) {
+  messyBtn.addEventListener('click', applyMessy)
+}
 
 // Resize handle
 let resizing = false

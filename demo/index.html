@@ -243,8 +243,7 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 12px;
-        padding: 16px 24px;
-        border-bottom: 1px solid var(--line);
+        padding: 16px 24px 10px;
         align-items: start;
         --control-height: 40px;
         --control-padding-x: 12px;
@@ -252,19 +251,59 @@
       }
 
       .sandbox-controls {
+        --label-width: 110px;
         display: grid;
         gap: 10px;
       }
 
       .sandbox-row {
         display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: max-content;
+        grid-template-columns: var(--label-width) 1fr auto;
         align-items: center;
         gap: 10px;
       }
-      .sandbox-row--font {
-        grid-template-columns: 130px minmax(360px, 1fr) auto minmax(200px, 1fr);
+      .sandbox-row > * {
+        min-width: 0;
+      }
+      .sandbox-row select,
+      .sandbox-row .choices {
+        width: 100%;
+      }
+      .sandbox-row--metrics {
+        grid-template-columns: var(--label-width) minmax(60px, 100px) 20px auto minmax(0, 0.75fr) 1fr auto auto;
+      }
+      .sandbox-row--metrics-spacer {
+        display: block;
+      }
+      .sandbox-row--status {
+        grid-template-columns: 1fr auto;
+        margin-top: 10px;
+      }
+      .sandbox-weight {
+        display: grid;
+        gap: 6px;
+      }
+      .sandbox-weight-range {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+      .sandbox-weight-range:not([hidden]) {
+        display: grid;
+      }
+      .sandbox-weight-range output {
+        font: 600 12px/1 'Space Grotesk', sans-serif;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        min-width: 3ch;
+        text-align: right;
+      }
+      .sandbox-weight-range input[type="range"] {
+        width: 100%;
+        height: 2px;
+        accent-color: var(--accent);
+        cursor: pointer;
       }
 
       .sandbox-header label {
@@ -287,18 +326,16 @@
         outline: none;
       }
 
-      .sandbox-header select { min-width: 180px; }
-      .sandbox-header input[type="text"] { min-width: 160px; }
-      .sandbox-header input[type="number"] { width: 72px; }
+      .sandbox-header select { min-width: 0; }
+      .sandbox-header input[type="text"] { min-width: 0; }
+      .sandbox-header input[type="number"] { width: 100%; min-width: 0; }
       .sandbox-note {
         font-size: 12px;
         color: var(--muted);
+        display: none;
       }
-      .sandbox-row--font .sandbox-note {
-        white-space: nowrap;
-      }
-
       .sandbox-note.is-error {
+        display: inline;
         color: #9b3a3a;
       }
 
@@ -323,11 +360,17 @@
         background: #fff;
         color: var(--ink);
       }
+      .sandbox-btn--accent {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
 
       .sandbox-header .choices {
-        min-width: 220px;
-        width: min(320px, 100%);
-        justify-self: start;
+        min-width: 0;
+        width: 100%;
+        justify-self: stretch;
+        margin: 0;
       }
       .sandbox-header .choices__inner {
         min-height: var(--control-height);
@@ -389,30 +432,18 @@
         color: var(--muted);
       }
 
+      .sandbox-body-wrap {
+        padding: 20px 0 16px;
+        border-top: 1px solid var(--line);
+        margin: 10px 24px 0;
+      }
       .sandbox-body {
-        position: relative;
-        padding: 32px 24px;
         min-height: 120px;
-      }
-
-      .sandbox-resize-handle {
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 6px;
-        cursor: col-resize;
-        background: transparent;
-        transition: background .15s;
-      }
-      .sandbox-resize-handle:hover,
-      .sandbox-resize-handle.is-dragging {
-        background: rgba(0, 0, 0, .12);
       }
 
       .sandbox-preview {
         font-size: 48px;
-        font-weight: 700;
+        font-weight: 400;
         line-height: 1.1;
         word-wrap: break-word;
         overflow-wrap: break-word;
@@ -464,8 +495,17 @@
         }
 
         .sandbox-row {
-          grid-auto-flow: row;
-          justify-items: start;
+          grid-template-columns: 1fr;
+        }
+        .sandbox-row--metrics {
+          grid-template-columns: auto 1fr;
+        }
+        .sandbox-row--metrics .sandbox-weight {
+          grid-column: 1 / -1;
+        }
+        .sandbox-row--metrics .sandbox-btn {
+          grid-column: 1 / -1;
+          justify-self: stretch;
         }
       }
     </style>
@@ -495,38 +535,55 @@
       <section class="sandbox" id="sandbox">
         <div class="sandbox-header" data-visual-kerning-ignore>
           <div class="sandbox-controls">
-            <div class="sandbox-row sandbox-row--font">
+            <div class="sandbox-row">
               <label for="sb-font-google">Google Fonts</label>
               <select id="sb-font-google"></select>
               <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-google-load" type="button">Load</button>
-              <span class="sandbox-note" id="sb-font-google-status">Click Load to fetch Google Fonts list.</span>
             </div>
-            <div class="sandbox-row sandbox-row--font">
+            <div class="sandbox-row">
               <label for="sb-font-local">Local Fonts</label>
               <select id="sb-font-local"></select>
               <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-local-load" type="button">Load</button>
-              <span class="sandbox-note" id="sb-font-local-status">Click Load to scan local fonts.</span>
             </div>
-            <div class="sandbox-row">
+            <span class="sandbox-note" id="sb-font-google-status">Click Load to fetch Google Fonts list.</span>
+            <span class="sandbox-note" id="sb-font-local-status">Click Load to scan local fonts.</span>
+            <div class="sandbox-row sandbox-row--metrics">
               <label for="sb-size">Size</label>
               <input type="number" id="sb-size" value="48" min="10" max="400" step="1" />
+              <span></span>
               <label for="sb-weight">Weight</label>
-              <select id="sb-weight">
-                <option value="400">400</option>
-                <option value="500">500</option>
-                <option value="600">600</option>
-                <option value="700" selected>700</option>
-                <option value="800">800</option>
-                <option value="900">900</option>
-              </select>
+              <div class="sandbox-weight">
+                <select id="sb-weight">
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="300">300</option>
+                  <option value="400" selected>400</option>
+                  <option value="500">500</option>
+                  <option value="600">600</option>
+                  <option value="700">700</option>
+                  <option value="800">800</option>
+                  <option value="900">900</option>
+                </select>
+                <div class="sandbox-weight-range" id="sb-weight-range-wrap" hidden>
+                  <input type="range" id="sb-weight-range" min="100" max="900" step="1" value="400" />
+                  <output id="sb-weight-output">400</output>
+                </div>
+              </div>
+              <span class="sandbox-row--metrics-spacer"></span>
+              <button class="sandbox-btn sandbox-btn--accent" id="sb-lucky" type="button">Lucky</button>
+              <button class="sandbox-btn sandbox-btn--accent" id="sb-messy" type="button">Messy</button>
+            </div>
+            <div class="sandbox-row sandbox-row--status">
+              <span class="sandbox-note" id="sb-lucky-status"></span>
+              <button class="sandbox-btn" id="sb-export">Export HTML</button>
             </div>
           </div>
-          <button class="sandbox-btn" id="sb-export">Export HTML</button>
         </div>
-        <div class="sandbox-body" id="sb-body">
-          <textarea class="sandbox-textarea" id="sb-input" rows="2" placeholder="Type your text here…">Your Headline Here</textarea>
-          <p class="sandbox-preview" id="sb-preview">Your Headline Here</p>
-          <div class="sandbox-resize-handle" id="sb-resize"></div>
+        <div class="sandbox-body-wrap">
+          <div class="sandbox-body" id="sb-body">
+            <textarea class="sandbox-textarea" id="sb-input" rows="2" placeholder="Type your text here…">Your Headline Here</textarea>
+            <p class="sandbox-preview" id="sb-preview">Your Headline Here</p>
+          </div>
         </div>
       </section>
 

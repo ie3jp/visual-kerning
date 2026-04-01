@@ -10,9 +10,8 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
   await expect(page.locator('.js-panel')).toContainText('Drag the header to move the palette')
 
   const hero = page.locator('.hero')
-  const heroBox = await hero.boundingBox()
-  if (!heroBox) throw new Error('Hero heading not found')
-  await page.mouse.click(heroBox.x + 4, heroBox.y + heroBox.height / 2)
+  await hero.scrollIntoViewIfNeeded()
+  await hero.click()
 
   await page.evaluate(() => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true }))
