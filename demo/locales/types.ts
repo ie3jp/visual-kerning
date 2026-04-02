@@ -34,6 +34,9 @@ export interface DemoMessages {
   luckyFontMsg: (font: string) => string
   messyApplied: string
   dropOverlay: string
+  htmlDropOverlay: string
+  htmlImportSuccess: string
+  htmlImportFailed: string
 
   tutorialContent: (p: PlatformInfo) => TutorialContent
 }
