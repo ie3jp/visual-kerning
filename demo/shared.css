@@ -926,6 +926,32 @@ code {
   }
 }
 
+.kofi-banner {
+  text-align: center;
+  margin-top: -32px;
+}
+
+.kofi-banner p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.kofi-btn {
+  display: inline-block;
+  padding: 8px 20px;
+  background: #FF5E5B;
+  color: #fff;
+  font: 600 14px/1 'Inter', sans-serif;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.kofi-btn:hover {
+  opacity: 0.85;
+}
+
 .site-footer {
   text-align: center;
   padding: 24px 0;

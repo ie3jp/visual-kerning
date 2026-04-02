@@ -690,7 +690,70 @@ exportBtn.addEventListener('click', () => {
     if (!span.getAttribute('style')?.trim()) span.removeAttribute('style')
   })
 
-  const html = clone.outerHTML
+  const body = clone.outerHTML
+
+  let fontComment = ''
+  let fontLink = ''
+  if (source === 'google') {
+    fontLink = `  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}&display=swap">\n`
+  } else {
+    fontComment =
+      `  <!--\n` +
+      `    ⚠ フォントについて:\n` +
+      `    このファイルはお使いのPC内のフォント「${family}」を使っています。\n` +
+      `    このフォントが入っていないPCでは、別のフォントで表示されるため\n` +
+      `    文字の見た目やカーニングがずれることがあります。\n` +
+      `\n` +
+      `    Font notice:\n` +
+      `    This file uses the local font "${family}".\n` +
+      `    On computers without this font, text will fall back to a default font\n` +
+      `    and kerning may not appear as intended.\n` +
+      `  -->\n`
+  }
+
+  const html =
+    `<!DOCTYPE html>\n` +
+    `<html lang="ja">\n` +
+    `<head>\n` +
+    `  <meta charset="UTF-8">\n` +
+    `  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n` +
+    `  <!--\n` +
+    `    visual-kerning HTML Export\n` +
+    `    https://github.com/cyocun/visual-kerning\n` +
+    `\n` +
+    `    使い方:\n` +
+    `      このファイルをブラウザ（Chrome, Safari 等）で開くだけで\n` +
+    `      カーニング調整済みのテキストが表示されます。\n` +
+    `      そのままデザイン確認用として共有できます。\n` +
+    `\n` +
+    `    Webサイトに組み込む場合:\n` +
+    `      <body> 〜 </body> の中身をコピーしてお使いください。\n` +
+    (source === 'google'
+      ? `      また、<head> 内の <link rel="stylesheet" href="https://fonts.googleapis.com/..."> の行も\n` +
+        `      コピー先の <head> に追加してください（フォントの読み込みに必要です）。\n` +
+        `      <head> を編集できない場合は、<body> 内に貼っても動作します。\n`
+      : '') +
+    `\n` +
+    `    How to use:\n` +
+    `      Just open this file in a browser (Chrome, Safari, etc.)\n` +
+    `      to see the kerned text. Share it as-is for design review.\n` +
+    `\n` +
+    `    To embed in your website:\n` +
+    `      Copy the contents inside <body> ... </body>.\n` +
+    (source === 'google'
+      ? `      Also copy the <link rel="stylesheet" href="https://fonts.googleapis.com/..."> line\n` +
+        `      into your page's <head> (required to load the font).\n` +
+        `      If you can't edit <head>, placing it inside <body> also works.\n`
+      : '') +
+    `  -->\n` +
+    fontLink +
+    fontComment +
+    `</head>\n` +
+    `<body>\n` +
+    `${body}\n` +
+    `</body>\n` +
+    `</html>`
+
   const blob = new Blob([html], { type: 'text/html' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
