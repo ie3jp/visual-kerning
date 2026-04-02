@@ -138,13 +138,13 @@ function createStyleText(options: KerningUIRootOptions): string {
         color: rgba(255,255,255,.82);
         border: 1px solid rgba(255,255,255,.08);
         border-radius: 14px;
-        box-shadow: 0 18px 56px rgba(0,0,0,.34);
+        box-shadow: 0 4px 20px rgba(0,0,0,.18);
         font: 500 12px/1.4 sans-serif;
         overflow: hidden;
         user-select: none;
         backdrop-filter: blur(14px);
       }
-      .${panelClass}.is-dragging { box-shadow: 0 22px 68px rgba(0,0,0,.4); }
+      .${panelClass}.is-dragging { box-shadow: 0 8px 28px rgba(0,0,0,.24); }
       .${headerClass} {
         display: flex;
         align-items: flex-start;

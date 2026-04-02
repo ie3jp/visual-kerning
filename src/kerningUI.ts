@@ -1,5 +1,7 @@
 import { applyKerning, type KerningExport } from './applyKerning'
+import { setupDropZone } from './dropZone'
 import { editorMessages, type EditorLocale } from './editorMessages'
+import { isKerningExport } from './validation'
 import {
   ACTIVE_CLASS,
   CHAR_CLASS,
@@ -120,6 +122,7 @@ export function visualKerning(options: VisualKerningOptions = {}): VisualKerning
   let lastAreaGuidesKey = ''
   let lastMarkersKey = ''
   let lastSelectionKey = ''
+  let dropCleanup: (() => void) | null = null
 
   const warnClass = editorClass('warn')
   const {
@@ -366,17 +369,19 @@ export function visualKerning(options: VisualKerningOptions = {}): VisualKerning
     mount() {
       if (document.readyState === 'loading') {
         if (!pendingDomReady) {
-          pendingDomReady = () => editor.mount()
-          document.addEventListener('DOMContentLoaded', pendingDomReady, { once: true })
+          return new Promise<void>((resolve) => {
+            pendingDomReady = () => { editor.mount().then(resolve) }
+            document.addEventListener('DOMContentLoaded', pendingDomReady, { once: true })
+          })
         }
-        return
+        return Promise.resolve()
       }
       pendingDomReady = null
       if (!editable) {
         if (options.kerning) applyKerning(options.kerning, { accessible: options.accessible })
-        return
+        return Promise.resolve()
       }
-      if (mounted) return
+      if (mounted) return Promise.resolve()
       mounted = true
       if (options.kerning) seedPersistedKerningData(options.kerning)
       lastAreaGuidesKey = ''
@@ -397,8 +402,24 @@ export function visualKerning(options: VisualKerningOptions = {}): VisualKerning
         const el = document.querySelector(selector)
         if (el?.tagName === 'SPAN') showWarn(t.warnSpanTarget)
       })
-      plugin.mount()
+      dropCleanup = setupDropZone(
+        panelEl,
+        t.dropOverlay,
+        (f) => f.name.endsWith('.json'),
+        (file) => {
+          file.text().then((text) => {
+            try {
+              const data = JSON.parse(text)
+              if (!isKerningExport(data)) return
+              plugin.importJSON(data)
+            } catch {
+              // invalid JSON
+            }
+          })
+        },
+      )
       rafId = window.requestAnimationFrame(loop)
+      return plugin.mount()
     },
     unmount() {
       if (pendingDomReady) {
@@ -414,6 +435,7 @@ export function visualKerning(options: VisualKerningOptions = {}): VisualKerning
       clearTimeout(copiedTimer)
       clearTimeout(warnTimer)
       if (warnDispose) { warnDispose(); warnDispose = null }
+      if (dropCleanup) { dropCleanup(); dropCleanup = null }
       plugin.unmount()
       dragHandleEl.removeEventListener('pointerdown', onDragStart)
       collapseBtn.removeEventListener('click', onCollapseClick)

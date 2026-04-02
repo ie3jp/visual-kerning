@@ -1,5 +1,6 @@
 import { visualKerning } from '../src/kerningUI'
 import { wrapElementWithKerning } from '../src/applyKerning'
+import { setupDropZone } from '../src/dropZone'
 import { ACTIVE_CLASS, CHAR_CLASS, MODIFIED_CLASS, STORAGE_KEY } from '../src/kerningEditor'
 import kerningData from './kerning-export.json'
 import { createTour } from './tour'
@@ -599,73 +600,6 @@ if (resizeHandle) {
   resizeHandle.addEventListener('pointercancel', stopResize)
 }
 
-// --- Import JSON via drag & drop on editor panel ---
-const panel = document.querySelector('.visual-kerning-panel') as HTMLElement | null
-if (panel) {
-  const dropOverlay = document.createElement('div')
-  dropOverlay.textContent = m.dropOverlay
-  Object.assign(dropOverlay.style, {
-    display: 'none',
-    position: 'absolute',
-    inset: '0',
-    background: 'rgba(26, 26, 26, 0.85)',
-    color: '#fff',
-    font: '600 13px/1 "Space Grotesk", sans-serif',
-    letterSpacing: '0.06em',
-    borderRadius: 'inherit',
-    justifyContent: 'center',
-    alignItems: 'center',
-    pointerEvents: 'none',
-    zIndex: '1',
-  })
-  panel.style.position = 'relative'
-  panel.appendChild(dropOverlay)
-
-  let dragCount = 0
-
-  panel.addEventListener('dragenter', (e) => {
-    e.preventDefault()
-    dragCount++
-    dropOverlay.style.display = 'flex'
-  })
-
-  panel.addEventListener('dragleave', () => {
-    dragCount--
-    if (dragCount <= 0) {
-      dragCount = 0
-      dropOverlay.style.display = 'none'
-    }
-  })
-
-  panel.addEventListener('dragover', (e) => {
-    e.preventDefault()
-    ;(e as DragEvent).dataTransfer!.dropEffect = 'copy'
-  })
-
-  panel.addEventListener('drop', (e) => {
-    e.preventDefault()
-    dragCount = 0
-    dropOverlay.style.display = 'none'
-    const file = (e as DragEvent).dataTransfer?.files[0]
-    if (!file || !file.name.endsWith('.json')) return
-
-    file.text().then((text) => {
-      try {
-        const data = JSON.parse(text)
-        if (!data.areas || !Array.isArray(data.areas)) {
-          console.warn('[visual-kerning] Invalid kerning JSON')
-          return
-        }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(areasToPersistedMap(data.areas)))
-        localStorage.setItem(IMPORTED_KEY, '1')
-        location.reload()
-      } catch {
-        console.warn('[visual-kerning] Failed to parse dropped JSON')
-      }
-    })
-  })
-}
-
 // --- Parse exported HTML for re-import ---
 interface ImportedHtmlData {
   text: string
@@ -682,7 +616,6 @@ function parseExportedHtml(html: string): ImportedHtmlData | null {
   const root = doc.body.firstElementChild as HTMLElement | null
   if (!root) return null
 
-  // font info from inline style
   const style = root.getAttribute('style') || ''
   const familyMatch = style.match(/font-family:\s*'([^']+)'/)
     || style.match(/font-family:\s*"([^"]+)"/)
@@ -694,88 +627,61 @@ function parseExportedHtml(html: string): ImportedHtmlData | null {
   const fontSize = sizeMatch ? sizeMatch[1] : '64'
   const fontWeight = weightMatch ? weightMatch[1] : '400'
 
-  // detect Google Font via <link> to fonts.googleapis.com
   const hasGoogleLink = !!doc.querySelector('link[href*="fonts.googleapis.com"]')
   const fontSource: FontSource = hasGoogleLink ? 'google' : 'local'
 
-  // extract text and kerning from spans
   const chars: string[] = []
   const marginValues: number[] = []
 
   for (const child of Array.from(root.childNodes)) {
-    if (child.nodeType === Node.ELEMENT_NODE) {
-      const el = child as HTMLElement
-      if (el.tagName === 'BR') {
-        chars.push('\n')
-        continue
-      }
-      if (el.tagName === 'SPAN') {
-        const text = el.textContent ?? ''
-        const ml = el.style.marginLeft || el.getAttribute('style')?.match(/margin-left:\s*([^;]+)/)?.[1] || ''
-        const emMatch = ml.match(/([-\d.]+)\s*em/)
-        const emValue = emMatch ? Math.round(parseFloat(emMatch[1]) * 1000) : 0
-        chars.push(text)
-        marginValues.push(emValue)
-      }
+    if (child.nodeType !== Node.ELEMENT_NODE) continue
+    const el = child as HTMLElement
+    if (el.tagName === 'BR') {
+      chars.push('\n')
+      continue
+    }
+    if (el.tagName === 'SPAN') {
+      const ml = el.style.marginLeft || el.getAttribute('style')?.match(/margin-left:\s*([^;]+)/)?.[1] || ''
+      const emMatch = ml.match(/([-\d.]+)\s*em/)
+      chars.push(el.textContent ?? '')
+      marginValues.push(emMatch ? Math.round(parseFloat(emMatch[1]) * 1000) : 0)
     }
   }
 
   if (marginValues.length === 0) return null
 
-  // margin[0] → indent, margin[i>=1] → kerning[i-1], plus trailing 0
-  const indent = marginValues[0]
-  const kerning: number[] = []
-  for (let i = 1; i < marginValues.length; i++) {
-    kerning.push(marginValues[i])
-  }
-  kerning.push(0) // trailing gap after last char
+  // margin[0] → indent, margin[1..] → kerning, plus trailing 0
+  const kerning = [...marginValues.slice(1), 0]
+  const text = chars.join('').replace(/\n+$/, '')
 
-  const text = chars.filter(c => c !== '\n' || chars.some(cc => cc !== '\n')).join('')
-  // reconstruct text with newlines for textarea, but strip trailing newlines
-  const textForInput = chars.join('').replace(/\n+$/, '')
-
-  return { text: textForInput, kerning, indent, fontFamily, fontSize, fontWeight, fontSource }
+  return { text, kerning, indent: marginValues[0], fontFamily, fontSize, fontWeight, fontSource }
 }
 
 // --- Apply imported HTML data to sandbox ---
 function applyImportedHtml(data: ImportedHtmlData) {
-  // 1. Set font source and selector
   activeFontSource = data.fontSource
-  if (data.fontSource === 'google') {
-    // Ensure font is in select, add if missing
-    const exists = Array.from(fontGoogleSelect.options).some(o => o.value === data.fontFamily)
-    if (!exists) {
-      const current = Array.from(fontGoogleSelect.options).map(o => ({ value: o.value, text: o.text }))
-      current.push({ value: data.fontFamily, text: data.fontFamily })
-      syncGoogleFontOptions(current)
-    }
-    fontGoogleSelect.value = data.fontFamily
-    googleSelect?.setChoiceByValue(data.fontFamily)
-    loadGoogleFont(data.fontFamily, data.fontWeight)
-  } else {
-    const exists = Array.from(fontLocalSelect.options).some(o => o.value === data.fontFamily)
-    if (!exists) {
-      const current = Array.from(fontLocalSelect.options).map(o => ({ value: o.value, text: o.text }))
-      current.push({ value: data.fontFamily, text: data.fontFamily })
-      syncLocalFontOptions(current)
-    }
-    fontLocalSelect.value = data.fontFamily
-    localSelect?.setChoiceByValue(data.fontFamily)
-  }
+  const isGoogle = data.fontSource === 'google'
+  const selectEl = isGoogle ? fontGoogleSelect : fontLocalSelect
+  const choicesInst = isGoogle ? googleSelect : localSelect
+  const syncFn = isGoogle ? syncGoogleFontOptions : syncLocalFontOptions
 
-  // 2. Set size and weight
+  if (!Array.from(selectEl.options).some(o => o.value === data.fontFamily)) {
+    const current = Array.from(selectEl.options).map(o => ({ value: o.value, text: o.text }))
+    current.push({ value: data.fontFamily, text: data.fontFamily })
+    syncFn(current)
+  }
+  selectEl.value = data.fontFamily
+  choicesInst?.setChoiceByValue(data.fontFamily)
+  if (isGoogle) loadGoogleFont(data.fontFamily, data.fontWeight)
+
   sizeInput.value = data.fontSize
   syncWeightControls(data.fontWeight)
   updateWeightUI()
-
-  // 3. Set text input
   textInput.value = data.text
 
-  // 4. Update preview
   updatePreviewStyle()
   resetPreviewArea()
 
-  // Build text content with <br> for newlines, then wrap with kerning
   preview.textContent = ''
   const lines = data.text.split('\n')
   for (let i = 0; i < lines.length; i++) {
@@ -788,54 +694,11 @@ function applyImportedHtml(data: ImportedHtmlData) {
 }
 
 // --- HTML drag & drop on sandbox ---
-{
-  const htmlDropOverlay = document.createElement('div')
-  htmlDropOverlay.textContent = m.htmlDropOverlay
-  Object.assign(htmlDropOverlay.style, {
-    display: 'none',
-    position: 'absolute',
-    inset: '0',
-    background: 'rgba(26, 26, 26, 0.85)',
-    color: '#fff',
-    font: '600 13px/1 "Space Grotesk", sans-serif',
-    letterSpacing: '0.06em',
-    borderRadius: 'inherit',
-    justifyContent: 'center',
-    alignItems: 'center',
-    pointerEvents: 'none',
-    zIndex: '1',
-  })
-  sandboxBody.style.position = 'relative'
-  sandboxBody.appendChild(htmlDropOverlay)
-
-  let dragCount = 0
-
-  sandboxBody.addEventListener('dragenter', (e) => {
-    e.preventDefault()
-    dragCount++
-    htmlDropOverlay.style.display = 'flex'
-  })
-
-  sandboxBody.addEventListener('dragleave', () => {
-    dragCount--
-    if (dragCount <= 0) {
-      dragCount = 0
-      htmlDropOverlay.style.display = 'none'
-    }
-  })
-
-  sandboxBody.addEventListener('dragover', (e) => {
-    e.preventDefault()
-    ;(e as DragEvent).dataTransfer!.dropEffect = 'copy'
-  })
-
-  sandboxBody.addEventListener('drop', (e) => {
-    e.preventDefault()
-    dragCount = 0
-    htmlDropOverlay.style.display = 'none'
-    const file = (e as DragEvent).dataTransfer?.files[0]
-    if (!file || !(file.name.endsWith('.html') || file.name.endsWith('.htm'))) return
-
+setupDropZone(
+  sandboxBody,
+  m.htmlDropOverlay,
+  (f) => f.name.endsWith('.html') || f.name.endsWith('.htm'),
+  (file) => {
     file.text().then((text) => {
       try {
         const data = parseExportedHtml(text)
@@ -849,8 +712,8 @@ function applyImportedHtml(data: ImportedHtmlData) {
         setLuckyStatus(m.htmlImportFailed, true)
       }
     })
-  })
-}
+  },
+)
 
 // Export HTML
 exportBtn.addEventListener('click', () => {

@@ -33,7 +33,6 @@ export interface DemoMessages {
   typeTextFirst: string
   luckyFontMsg: (font: string) => string
   messyApplied: string
-  dropOverlay: string
   htmlDropOverlay: string
   htmlImportSuccess: string
   htmlImportFailed: string

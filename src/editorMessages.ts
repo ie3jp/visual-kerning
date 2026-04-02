@@ -10,6 +10,7 @@ const baseMessages = {
     collapse: 'Collapse palette',
     expand: 'Expand palette',
     guides: 'Guides',
+    dropOverlay: 'Drop JSON to import',
   },
   ja: {
     export: '書き出し',
@@ -20,6 +21,7 @@ const baseMessages = {
     collapse: 'パレットを折りたたむ',
     expand: 'パレットを展開する',
     guides: 'ガイド',
+    dropOverlay: 'JSONをドロップしてインポート',
   },
 } as const
 

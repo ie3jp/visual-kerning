@@ -102,7 +102,7 @@ export interface VisualKerningPlugin extends VisualKerningEmitter {
   enabled: ValueBox<boolean>
   compareMode: ValueBox<boolean>
   showGapMarkers: ValueBox<boolean>
-  mount(): void
+  mount(): Promise<void>
   unmount(): void
   areas: ValueBox<Map<string, VisualKerningArea>>
   activeSelector: ValueBox<string | null>
@@ -116,6 +116,7 @@ export interface VisualKerningPlugin extends VisualKerningEmitter {
   exportJSON(): KerningExport
   toggleCompareMode(): void
   resetAll(): void
+  importJSON(data: KerningExport): void
 }
 
 function isAreaModified(area: Pick<VisualKerningArea, 'indent' | 'kerning'>): boolean {
@@ -658,7 +659,7 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     }
   }
 
-  function resetAll() {
+  function clearAreas() {
     areas.value.forEach((area) => {
       area.el.classList.remove(ACTIVE_CLASS, MODIFIED_CLASS)
       restoreOriginalText(area.el, area.originalHTML)
@@ -666,8 +667,18 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     areas.value.clear()
     setCompareMode(false)
     deactivate()
+  }
+
+  function resetAll() {
+    clearAreas()
     removePersistedData()
     emitter.emit('reset', undefined)
+  }
+
+  function importJSON(data: KerningExport) {
+    clearAreas()
+    seedPersistedKerningData(data)
+    load()
   }
 
   function load() {
@@ -738,12 +749,18 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     exportJSON,
     toggleCompareMode,
     resetAll,
+    importJSON,
     mount() {
-      loadTimerId = window.setTimeout(load, 0)
       window.addEventListener('click', onClick, true)
       window.addEventListener('keydown', onKeydown, true)
       window.addEventListener('scroll', onScrollOrResize, true)
       window.addEventListener('resize', onScrollOrResize)
+      return new Promise<void>((resolve) => {
+        loadTimerId = window.setTimeout(() => {
+          load()
+          resolve()
+        }, 0)
+      })
     },
     unmount() {
       window.clearTimeout(loadTimerId)

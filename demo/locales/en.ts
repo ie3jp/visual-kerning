@@ -28,7 +28,6 @@ export const en: DemoMessages = {
   typeTextFirst: 'Type some text first.',
   luckyFontMsg: (font) => `Lucky font: ${font}.`,
   messyApplied: 'Messy!',
-  dropOverlay: 'Drop JSON to import',
   htmlDropOverlay: 'Drop HTML to re-edit',
   htmlImportSuccess: 'Imported from HTML.',
   htmlImportFailed: 'Could not parse kerning from this HTML.',
