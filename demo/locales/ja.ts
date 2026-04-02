@@ -29,6 +29,9 @@ export const ja: DemoMessages = {
   luckyFontMsg: (font) => `Luckyフォント: ${font}`,
   messyApplied: 'Messy！',
   dropOverlay: 'JSONをドロップしてインポート',
+  htmlDropOverlay: 'HTMLをドロップして再編集',
+  htmlImportSuccess: 'HTMLからインポートしました。',
+  htmlImportFailed: 'このHTMLからカーニングを読み取れませんでした。',
 
   tutorialContent: ({ isMac, altKey }) => ({
     welcome: [
