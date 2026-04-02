@@ -11,6 +11,17 @@ import type { DemoMessages } from './locales/types'
 const lang = document.documentElement.lang
 const m: DemoMessages = lang === 'ja' ? ja : en
 
+declare function gtag(command: 'event', action: string, params?: Record<string, string | number>): void
+
+function trackEvent(action: string, label?: string) {
+  if (typeof gtag === 'function') {
+    gtag('event', action, {
+      event_category: 'demo',
+      ...(label ? { event_label: label } : {}),
+    })
+  }
+}
+
 type PersistedArea = { text: string; kerning: number[]; indent: number; font: { family: string; weight: string; size: string } }
 type SelectOption = { value: string; text: string }
 type ChoicesOption = { value: string; label: string; selected?: boolean; disabled?: boolean }
@@ -41,6 +52,7 @@ if (!Choices) {
 document.querySelectorAll<HTMLAnchorElement>('.lang-toggle a[data-lang]').forEach(link => {
   link.addEventListener('click', () => {
     localStorage.setItem('visual-kerning-demo-lang', link.dataset.lang!)
+    trackEvent('lang_switch', link.dataset.lang!)
   })
 })
 
@@ -298,6 +310,7 @@ googleSelect = new Choices(fontGoogleSelect, {
 })
 if (googleFontLoadBtn) {
   googleFontLoadBtn.addEventListener('click', () => {
+    trackEvent('font_load', 'google')
     void ensureGoogleFonts()
   })
 }
@@ -360,6 +373,7 @@ localSelect = new Choices(fontLocalSelect, {
 })
 if (localFontLoadBtn) {
   localFontLoadBtn.addEventListener('click', () => {
+    trackEvent('font_load', 'local')
     void ensureLocalFonts()
   })
 }
@@ -563,10 +577,16 @@ if (weightRange) {
   })
 }
 if (luckyBtn) {
-  luckyBtn.addEventListener('click', applyLucky)
+  luckyBtn.addEventListener('click', () => {
+    trackEvent('lucky')
+    applyLucky()
+  })
 }
 if (messyBtn) {
-  messyBtn.addEventListener('click', applyMessy)
+  messyBtn.addEventListener('click', () => {
+    trackEvent('messy')
+    applyMessy()
+  })
 }
 
 // Resize handle
@@ -753,6 +773,7 @@ function applyImportedHtml(data: ImportedHtmlData) {
 
 // Export HTML
 exportBtn.addEventListener('click', () => {
+  trackEvent('export_html')
   const clone = preview.cloneNode(true) as HTMLElement
   clone.classList.remove(ACTIVE_CLASS, MODIFIED_CLASS, 'sandbox-preview')
   clone.querySelectorAll('[class]').forEach(el => {
@@ -861,6 +882,7 @@ document.querySelectorAll('.install-tab-bar').forEach(bar => {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const id = tab.dataset.tab!
+      trackEvent('install_tab', id)
       tabs.forEach(t => t.classList.toggle('is-active', t === tab))
       panels.forEach(p => p.classList.toggle('is-active', p.dataset.tab === id))
       if (usagePkg && usageCdn) {
@@ -870,4 +892,15 @@ document.querySelectorAll('.install-tab-bar').forEach(bar => {
       }
     })
   })
+})
+
+// --- Outbound link tracking ---
+document.querySelectorAll<HTMLAnchorElement>('.github-link').forEach(link => {
+  link.addEventListener('click', () => trackEvent('click_github'))
+})
+document.querySelectorAll<HTMLAnchorElement>('.kofi-btn, a[href*="ko-fi.com"]').forEach(link => {
+  link.addEventListener('click', () => trackEvent('click_kofi'))
+})
+document.querySelectorAll<HTMLAnchorElement>('.aside-links a').forEach(link => {
+  link.addEventListener('click', () => trackEvent('nav_anchor', link.getAttribute('href') ?? ''))
 })
