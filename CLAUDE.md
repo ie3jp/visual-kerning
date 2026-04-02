@@ -38,6 +38,11 @@ npm run demo
 - UI/操作系の変更時は `npm run smoke` も実行
 - CI想定の確認は `npm run smoke:ci`
 
+## Release
+
+- npm publish はCIで実行される。ローカルから `npm publish` しない
+- バージョンは `npm version` で上げてコミットに含める
+
 ## Editing guidelines
 
 - 既存の日本語コメント/命名スタイルを尊重する

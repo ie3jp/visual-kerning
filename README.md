@@ -165,6 +165,7 @@ off()
 | `←` / `→` | Move cursor |
 | `Shift + ←/→` | Extend selection |
 | `↑` / `↓` | Move up / down within the same text block |
+| `Alt + Shift + ←/→` | Adjust by ±1 |
 | `Alt + ←/→` | Adjust by ±10 |
 | `Alt + Cmd/Ctrl + ←/→` | Adjust by ±100 |
 | `Esc` | Clear selection |
@@ -178,8 +179,9 @@ When multiple gaps are selected,
 
 The kerning adjustment keys are intentionally close to Illustrator:
 
-- `Alt/Option + ←/→`: fine adjustment
-- `Alt/Option + Cmd/Ctrl + ←/→`: larger adjustment
+- `Alt/Option + Shift + ←/→`: fine adjustment (±1)
+- `Alt/Option + ←/→`: standard adjustment (±10)
+- `Alt/Option + Cmd/Ctrl + ←/→`: coarse adjustment (±100)
 
 The browsing and editing workflow itself is browser-specific:
 
