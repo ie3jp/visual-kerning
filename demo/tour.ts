@@ -94,7 +94,7 @@ function createSpotlight(ignoreAttr?: string): HTMLElement {
     position: 'fixed',
     zIndex: TOUR_Z,
     boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)',
-    borderRadius: '12px',
+    borderRadius: '14px',
     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
     pointerEvents: 'none',
     left: 'calc(100vw - 180px)',
@@ -159,36 +159,31 @@ function createStyleEl(): HTMLStyleElement {
       border-radius: 6px;
     }
     .tour-skip-btn {
-      position: fixed;
-      bottom: 24px;
-      left: 24px;
       z-index: ${TOUR_Z};
-      padding: 8px 18px;
-      border: none;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.8);
-      font: 600 13px/1.2 'Space Grotesk', sans-serif;
+      padding: 4px 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      font: 500 12px/1 'Space Grotesk', sans-serif;
       cursor: pointer;
-      backdrop-filter: blur(8px);
       letter-spacing: 0.04em;
-      transition: background 0.2s;
+      transition: color 0.15s;
     }
-    .tour-skip-btn:hover { background: rgba(255,255,255,0.25); }
+    .tour-skip-btn:hover { color: rgba(255,255,255,0.9); }
     .tour-replay-btn {
       padding: 4px 10px;
-      border: 1px solid var(--line, rgba(0,0,0,0.08));
+      border: 1px solid var(--ink, #1a1a1a);
       border-radius: 6px;
-      background: var(--panel, rgba(255,255,255,0.72));
-      backdrop-filter: blur(8px);
-      color: var(--muted, #727270);
+      background: var(--ink, #1a1a1a);
+      color: #fff;
       font: 600 12px/1 'Space Grotesk', sans-serif;
       cursor: pointer;
       letter-spacing: 0.04em;
       text-decoration: none;
-      transition: background 0.15s, color 0.15s;
+      transition: opacity 0.15s;
     }
-    .tour-replay-btn:hover { background: rgba(0,0,0,0.06); }
+    .tour-replay-btn:hover { opacity: 0.8; }
     .tour-keycap {
       display: inline-block;
       min-width: 24px;
@@ -220,6 +215,10 @@ function createStyleEl(): HTMLStyleElement {
 
 // --- Spotlight ---
 
+function getTargetRadius(target: HTMLElement): number {
+  return parseFloat(getComputedStyle(target).borderRadius) || 0
+}
+
 function moveSpotlight(spotlight: HTMLElement, target: HTMLElement, pad = 10) {
   const rect = target.getBoundingClientRect()
   spotlight.style.boxShadow = '0 0 0 9999px rgba(0,0,0,0.45)'
@@ -228,6 +227,7 @@ function moveSpotlight(spotlight: HTMLElement, target: HTMLElement, pad = 10) {
     top: `${rect.top - pad}px`,
     width: `${rect.width + pad * 2}px`,
     height: `${rect.height + pad * 2}px`,
+    borderRadius: `${getTargetRadius(target) + pad}px`,
   })
 }
 
@@ -273,6 +273,7 @@ async function teleportSpotlight(
     top: `${rect.top - pad}px`,
     width: `${rect.width + pad * 2}px`,
     height: `${rect.height + pad * 2}px`,
+    borderRadius: `${getTargetRadius(target) + pad}px`,
   })
   await sleep(350, onCancel)
   if (isCancelled?.()) return
@@ -699,7 +700,13 @@ export function createTour(options: TourOptions): Tour {
     document.addEventListener('keydown', onKeyDown, true)
 
     document.head.appendChild(styleEl)
-    document.body.append(spotlight, caption, skipBtn)
+    const nav = document.querySelector('.top-nav')
+    if (nav) {
+      nav.insertBefore(skipBtn, nav.firstChild)
+    } else {
+      document.body.appendChild(skipBtn)
+    }
+    document.body.append(spotlight, caption)
 
     // 初期状態: スポットライト非表示
     spotlight.style.opacity = '0'
