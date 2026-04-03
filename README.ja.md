@@ -13,7 +13,7 @@
 ブラウザ上でカーニングを調整し、JSONとして書き出して、
 本番DOMへフレームワーク非依存で適用できるツールです。
 
-![Visual Kerning demo](.github/readme/demo.gif)
+![Visual Kerning demo](.github/readme/ogp.gif)
 
 ## Demo
 

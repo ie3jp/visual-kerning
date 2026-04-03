@@ -32,6 +32,12 @@ npm run e2e
 npm run demo
 ```
 
+### デモ録画ツール
+
+- `docs/recorder/`: デモ録画の仕様策定用GUIツール（Vite製、独立パッケージ）
+- 起動: `cd docs/recorder && npm run dev`
+- headless自動録画: `npx playwright test --config scripts/playwright.record.config.ts`
+
 ## Test policy
 
 - 変更時は最低でも `npm test` を実行

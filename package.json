@@ -22,6 +22,7 @@
     "e2e": "playwright test",
     "demo": "vite --config vite.demo.config.ts --host --port 4173",
     "demo:build": "vite build --config vite.demo.config.ts",
+    "record:ogp": "npx playwright test --config scripts/playwright.ogp.config.ts",
     "prepublishOnly": "npm run build && npm test"
   },
   "files": [

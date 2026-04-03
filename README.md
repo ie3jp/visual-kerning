@@ -13,7 +13,7 @@
 Adjust kerning in the browser, export it as JSON,
 and apply it to production DOM without tying yourself to a specific framework.
 
-![Visual Kerning demo](.github/readme/demo.gif)
+![Visual Kerning demo](.github/readme/ogp.gif)
 
 ## Demo
 

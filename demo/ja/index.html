@@ -4,13 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>visual kerning デモ</title>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MWCZ101EPK"></script>
+    <meta property="og:title" content="visual kerning デモ" />
+    <meta property="og:description" content="ブラウザ上で文字間を微調整。" />
+    <meta property="og:image" content="https://raw.githubusercontent.com/ie3jp/visual-kerning/main/.github/readme/ogp.gif" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Google tag (gtag.js) — skip on localhost or when ga_optout is set -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-MWCZ101EPK');
+      if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && !localStorage.getItem('ga_optout')) {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-MWCZ101EPK';
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-MWCZ101EPK');
+      }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
