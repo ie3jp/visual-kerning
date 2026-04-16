@@ -11,16 +11,28 @@
     <script>
       (function () {
         var STORAGE_KEY = 'visual-kerning-demo-lang'
+        var SUPPORTED = ['en', 'ja', 'de', 'zh', 'ko']
         var saved = localStorage.getItem(STORAGE_KEY)
-        var lang = saved || (navigator.language || '').split('-')[0]
-        var dest = lang === 'ja' ? 'ja/' : 'en/'
-        location.replace(dest)
+        var raw = (navigator.language || '').toLowerCase()
+        var detected = raw.split('-')[0]
+        // zh-CN, zh-TW など全て zh にマップ
+        if (raw.indexOf('zh') === 0) detected = 'zh'
+        var lang = saved && SUPPORTED.indexOf(saved) >= 0 ? saved
+          : SUPPORTED.indexOf(detected) >= 0 ? detected
+          : 'en'
+        location.replace(lang + '/')
       })()
     </script>
   </head>
   <body>
     <noscript>
-      <p><a href="en/">English</a> | <a href="ja/">日本語</a></p>
+      <p>
+        <a href="en/">English</a> |
+        <a href="ja/">日本語</a> |
+        <a href="de/">Deutsch</a> |
+        <a href="zh/">简体中文</a> |
+        <a href="ko/">한국어</a>
+      </p>
     </noscript>
   </body>
 </html>

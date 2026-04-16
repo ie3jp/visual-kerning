@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>visual kerning Playground</title>
     <meta property="og:title" content="visual kerning Playground" />
-    <meta property="og:description" content="Fine-tune letter spacing directly in the browser." />
+    <meta property="og:description" content="Buchstabenabstände direkt im Browser feinjustieren." />
     <meta property="og:image" content="https://raw.githubusercontent.com/ie3jp/visual-kerning/main/.github/readme/ogp.gif" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -38,13 +38,13 @@
   <body>
     <nav class="top-nav" data-visual-kerning-ignore>
       <div class="lang-toggle">
-        <a href="../en/" class="is-active" data-lang="en">EN</a>
+        <a href="../en/" data-lang="en">EN</a>
         <a href="../ja/" data-lang="ja">JA</a>
-        <a href="../de/" data-lang="de">DE</a>
+        <a href="../de/" class="is-active" data-lang="de">DE</a>
         <a href="../zh/" data-lang="zh">ZH</a>
         <a href="../ko/" data-lang="ko">KO</a>
       </div>
-      <a class="github-link" href="https://github.com/ie3jp/visual-kerning" target="_blank" rel="noopener" aria-label="View on GitHub">
+      <a class="github-link" href="https://github.com/ie3jp/visual-kerning" target="_blank" rel="noopener" aria-label="Auf GitHub ansehen">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       </a>
     </nav>
@@ -53,15 +53,15 @@
         <div>
           <p class="eyebrow">Playground</p>
           <h1 class="hero">VISUAL<br />KERNING</h1>
-          <p class="lede">Fine-tune letter spacing in the browser. Export as JSON, apply anywhere.</p>
+          <p class="lede">Buchstabenabstände im Browser feinjustieren. Als JSON exportieren, überall anwenden.</p>
         </div>
 
         <aside class="aside">
-          <h2>Try this page</h2>
-          <p><code><span class="key-mac">Cmd</span><span class="key-other">Ctrl</span> + K</code> toggle edit mode<br />Click text to select<br /><code><span class="key-mac">⌥</span><span class="key-other">Alt</span> + Shift + ←/→</code> fine ±1<br /><code><span class="key-mac">⌥</span><span class="key-other">Alt</span> + ←/→</code> adjust ±10<br /><code><span class="key-mac">⌥ + ⌘</span><span class="key-other">Alt + Ctrl</span> + ←/→</code> coarse ±100<br /><code>Shift + ←/→</code> select</p>
+          <h2>Auf dieser Seite ausprobieren</h2>
+          <p><code><span class="key-mac">Cmd</span><span class="key-other">Ctrl</span> + K</code> Bearbeitungsmodus umschalten<br />Text anklicken zum Auswählen<br /><code><span class="key-mac">⌥</span><span class="key-other">Alt</span> + Shift + ←/→</code> fein ±1<br /><code><span class="key-mac">⌥</span><span class="key-other">Alt</span> + ←/→</code> anpassen ±10<br /><code><span class="key-mac">⌥ + ⌘</span><span class="key-other">Alt + Ctrl</span> + ←/→</code> grob ±100<br /><code>Shift + ←/→</code> auswählen</p>
           <nav class="aside-links" data-visual-kerning-ignore>
-            <a href="#for-designers">For Designers</a>
-            <a href="#for-engineers">For Engineers</a>
+            <a href="#for-designers">Für Designer</a>
+            <a href="#for-engineers">Für Entwickler</a>
           </nav>
         </aside>
       </section>
@@ -72,20 +72,20 @@
             <div class="sandbox-row">
               <label for="sb-font-google">Google Fonts</label>
               <select id="sb-font-google"></select>
-              <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-google-load" type="button">Load</button>
+              <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-google-load" type="button">Laden</button>
             </div>
             <div class="sandbox-row">
-              <label for="sb-font-local">Local Fonts</label>
+              <label for="sb-font-local">Lokale Schriften</label>
               <select id="sb-font-local"></select>
-              <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-local-load" type="button">Load</button>
+              <button class="sandbox-btn sandbox-btn--ghost" id="sb-font-local-load" type="button">Laden</button>
             </div>
-            <span class="sandbox-note" id="sb-font-google-status">Click Load to fetch Google Fonts list.</span>
-            <span class="sandbox-note" id="sb-font-local-status">Click Load to scan local fonts.</span>
+            <span class="sandbox-note" id="sb-font-google-status">„Laden" klicken, um die Google-Fonts-Liste abzurufen.</span>
+            <span class="sandbox-note" id="sb-font-local-status">„Laden" klicken, um lokale Schriften zu erkennen.</span>
             <div class="sandbox-row sandbox-row--metrics">
-              <label for="sb-size">Size</label>
+              <label for="sb-size">Größe</label>
               <input type="number" id="sb-size" value="48" min="10" max="400" step="1" />
               <span></span>
-              <label for="sb-weight">Weight</label>
+              <label for="sb-weight">Schnitt</label>
               <div class="sandbox-weight">
                 <select id="sb-weight">
                   <option value="100">100</option>
@@ -109,20 +109,20 @@
             </div>
             <div class="sandbox-row sandbox-row--status">
               <span class="sandbox-note" id="sb-lucky-status"></span>
-              <button class="sandbox-btn" id="sb-export">Export HTML</button>
+              <button class="sandbox-btn" id="sb-export">HTML exportieren</button>
             </div>
           </div>
         </div>
         <div class="sandbox-body-wrap">
           <div class="sandbox-body" id="sb-body">
-            <textarea class="sandbox-textarea" id="sb-input" rows="2" placeholder="Type your text here…">Your Headline Here</textarea>
-            <p class="sandbox-preview" id="sb-preview">Your Headline Here</p>
+            <textarea class="sandbox-textarea" id="sb-input" rows="2" placeholder="Hier Text eingeben…">Deine Überschrift hier</textarea>
+            <p class="sandbox-preview" id="sb-preview">Deine Überschrift hier</p>
           </div>
         </div>
       </section>
 
       <div class="kofi-banner" data-visual-kerning-ignore>
-        <p>If you find this useful, buy me a coffee ☕</p>
+        <p>Wenn dir das hilft, spendier mir einen Kaffee ☕</p>
         <a class="kofi-btn" href="https://ko-fi.com/cyocun" target="_blank" rel="noopener">☕ Buy me a coffee</a>
       </div>
 
@@ -131,15 +131,15 @@
           <h2 class="bebas-hero" data-sizable style="--size: 175">AVATAR</h2>
           <div class="card-footer" data-visual-kerning-ignore>
             <p class="caption">Bebas Neue / display</p>
-            <div class="card-size-slider"><label>Size</label><input type="range" min="40" max="300" value="175" /><output>175px</output></div>
+            <div class="card-size-slider"><label>Größe</label><input type="range" min="40" max="300" value="175" /><output>175px</output></div>
           </div>
         </article>
 
         <article class="card">
-          <h2 class="playfair" data-sizable style="--size: 67">Typography<br />is atmosphere.</h2>
+          <h2 class="playfair" data-sizable style="--size: 67">Typografie<br />ist Atmosphäre.</h2>
           <div class="card-footer" data-visual-kerning-ignore>
             <p class="caption">Playfair Display / editorial serif</p>
-            <div class="card-size-slider"><label>Size</label><input type="range" min="20" max="200" value="67" /><output>67px</output></div>
+            <div class="card-size-slider"><label>Größe</label><input type="range" min="20" max="200" value="67" /><output>67px</output></div>
           </div>
         </article>
 
@@ -147,46 +147,46 @@
           <p class="variable-weight" data-sizable style="--size: 127"><span style="font-weight:900">V</span><span style="font-weight:100">A</span><span style="font-weight:800">R</span><span style="font-weight:100">I</span><span style="font-weight:900">A</span><span style="font-weight:100">B</span><span style="font-weight:700">L</span><span style="font-weight:100">E</span></p>
           <div class="card-footer" data-visual-kerning-ignore>
             <p class="caption">Inter Variable / weight 100→900</p>
-            <div class="card-size-slider"><label>Size</label><input type="range" min="24" max="200" value="127" /><output>127px</output></div>
+            <div class="card-size-slider"><label>Größe</label><input type="range" min="24" max="200" value="127" /><output>127px</output></div>
           </div>
         </article>
 
         <article class="card">
-          <p class="noto-serif-jp" data-sizable style="--size: 48">あのイーハトーヴォのすきとおった風</p>
+          <h2 class="playfair" data-sizable style="--size: 56">Donau­dampf­schifffahrts­gesellschaft</h2>
           <div class="card-footer" data-visual-kerning-ignore>
-            <p class="caption">Noto Serif JP / 和文明朝</p>
-            <div class="card-size-slider"><label>Size</label><input type="range" min="16" max="120" value="48" /><output>48px</output></div>
+            <p class="caption">Playfair Display / Komposita</p>
+            <div class="card-size-slider"><label>Größe</label><input type="range" min="20" max="120" value="56" /><output>56px</output></div>
           </div>
         </article>
 
       </section>
 
       <section class="for-designers" id="for-designers" data-visual-kerning-ignore>
-        <h2>For Designers</h2>
-        <p class="for-designers-intro">Make <strong>per-pair spacing adjustments</strong> in the browser — something CSS letter-spacing can't do.</p>
+        <h2>Für Designer</h2>
+        <p class="for-designers-intro">Mache <strong>paarweise Abstandskorrekturen</strong> im Browser — was CSS letter-spacing nicht kann.</p>
 
         <div class="for-designers-block">
-          <h3>Ask your engineer to integrate</h3>
-          <p class="for-designers-note">Copy and send the message below.</p>
+          <h3>Deinen Entwickler um Integration bitten</h3>
+          <p class="for-designers-note">Die Nachricht unten kopieren und senden.</p>
           <div class="for-designers-template">
-            <p>I'd like to fine-tune heading kerning.<br />visual kerning lets you adjust kerning in the browser and export as JSON. Setup instructions are in the README.</p>
-            <p><code class="for-designers-url">https://github.com/ie3jp/visual-kerning#readme</code></p>
+            <p>Ich möchte das Kerning der Überschriften feinjustieren.<br />Mit visual kerning kann man Kerning im Browser anpassen und als JSON exportieren. Einrichtung siehe README.</p>
+            <p><code class="for-designers-url">https://github.com/ie3jp/visual-kerning/blob/main/README.de.md</code></p>
           </div>
         </div>
 
         <div class="for-designers-block for-designers-export">
-          <h3>Export HTML yourself</h3>
+          <h3>HTML selbst exportieren</h3>
           <div class="for-designers-export-layout">
             <div class="for-designers-export-steps">
               <ol class="for-designers-steps">
-                <li>Enter text in the editor above, set font and size</li>
-                <li>Adjust spacing with <code><span class="key-mac">Option</span><span class="key-other">Alt</span> + ←/→</code></li>
-                <li>Click <span class="inline-btn">Export HTML</span> to download</li>
+                <li>Text im Editor oben eingeben, Schriftart und Größe wählen</li>
+                <li>Abstand mit <code><span class="key-mac">Option</span><span class="key-other">Alt</span> + ←/→</code> anpassen</li>
+                <li>Auf <span class="inline-btn">HTML exportieren</span> klicken, um herunterzuladen</li>
               </ol>
-              <p class="for-designers-note">Paste the exported HTML directly into any web page.</p>
+              <p class="for-designers-note">Das exportierte HTML kann direkt in jede Webseite eingefügt werden.</p>
             </div>
             <div class="for-designers-export-logos">
-              <p class="for-designers-note">Paste into any HTML block on no-code sites, CMS, blogs, or e-commerce platforms.</p>
+              <p class="for-designers-note">In jeden HTML-Block auf No-Code-Sites, CMS, Blogs oder E-Commerce-Plattformen einfügen.</p>
               <div class="use-case-logos">
                 <img src="../logos/squarespace.svg" alt="Squarespace" style="height:19px" />
                 <img src="../logos/wix.svg" alt="Wix" style="height:24px" />
@@ -202,8 +202,8 @@
       </section>
 
       <section class="for-engineers" id="for-engineers" data-visual-kerning-ignore>
-        <h2>For Engineers</h2>
-        <p class="for-engineers-intro">Zero dependencies, framework-agnostic. ESM only.</p>
+        <h2>Für Entwickler</h2>
+        <p class="for-engineers-intro">Null Abhängigkeiten, framework-unabhängig. Nur ESM.</p>
 
         <div class="install-tabs">
           <div class="install-tab-bar" role="tablist">
@@ -221,17 +221,17 @@
 <span class="sh-tag">&lt;/script&gt;</span></code></pre>
         </div>
 
-        <h3 class="for-engineers-usage-heading">Usage</h3>
+        <h3 class="for-engineers-usage-heading">Verwendung</h3>
         <div class="for-engineers-usage" data-usage="pkg">
           <div class="for-engineers-usage-step">
-            <p class="for-engineers-usage-label">Edit in dev / staging</p>
+            <p class="for-engineers-usage-label">In Dev / Staging bearbeiten</p>
             <pre class="install-panel is-active"><code><span class="sh-kw">import</span> { <span class="sh-fn">visualKerning</span> } <span class="sh-kw">from</span> <span class="sh-str">'visual-kerning'</span>
 
 <span class="sh-kw">const</span> editor = <span class="sh-fn">visualKerning</span>({ <span class="sh-attr">editable</span>: <span class="sh-kw">true</span> })
 editor.<span class="sh-fn">mount</span>()</code></pre>
           </div>
           <div class="for-engineers-usage-step">
-            <p class="for-engineers-usage-label">Apply in production</p>
+            <p class="for-engineers-usage-label">In Produktion anwenden</p>
             <pre class="install-panel is-active"><code><span class="sh-kw">const</span> editor = <span class="sh-fn">visualKerning</span>({
   <span class="sh-attr">editable</span>: <span class="sh-kw">false</span>,
   <span class="sh-attr">kerning</span>: kerningData
@@ -241,7 +241,7 @@ editor.<span class="sh-fn">mount</span>()</code></pre>
         </div>
         <div class="for-engineers-usage" data-usage="cdn" hidden>
           <div class="for-engineers-usage-step">
-            <p class="for-engineers-usage-label">Edit in dev / staging</p>
+            <p class="for-engineers-usage-label">In Dev / Staging bearbeiten</p>
             <pre class="install-panel is-active"><code><span class="sh-tag">&lt;script</span> <span class="sh-attr">type</span>=<span class="sh-str">"module"</span><span class="sh-tag">&gt;</span>
 <span class="sh-kw">import</span> { <span class="sh-fn">visualKerning</span> } <span class="sh-kw">from</span>
   <span class="sh-str">'https://esm.sh/visual-kerning@0.11.0'</span>
@@ -251,7 +251,7 @@ editor.<span class="sh-fn">mount</span>()
 <span class="sh-tag">&lt;/script&gt;</span></code></pre>
           </div>
           <div class="for-engineers-usage-step">
-            <p class="for-engineers-usage-label">Apply in production</p>
+            <p class="for-engineers-usage-label">In Produktion anwenden</p>
             <pre class="install-panel is-active"><code><span class="sh-tag">&lt;script</span> <span class="sh-attr">type</span>=<span class="sh-str">"module"</span><span class="sh-tag">&gt;</span>
 <span class="sh-kw">import</span> { <span class="sh-fn">visualKerning</span> } <span class="sh-kw">from</span>
   <span class="sh-str">'https://esm.sh/visual-kerning@0.11.0'</span>
@@ -269,14 +269,14 @@ editor.<span class="sh-fn">mount</span>()
           </div>
         </div>
 
-        <p class="for-engineers-readme">Events, accessibility, keyboard shortcuts, and more — see the <a href="https://github.com/ie3jp/visual-kerning#readme" target="_blank" rel="noopener">README</a>.</p>
+        <p class="for-engineers-readme">Events, Barrierefreiheit, Tastenkürzel und mehr — siehe <a href="https://github.com/ie3jp/visual-kerning/blob/main/README.de.md" target="_blank" rel="noopener">README</a>.</p>
       </section>
 
     </main>
 
     <footer class="site-footer" data-visual-kerning-ignore>
-      <p>Uses Google Analytics</p>
-      <p>If this tool helps your workflow — <a href="https://ko-fi.com/cyocun" target="_blank" rel="noopener">buy me a coffee!</a></p>
+      <p>Verwendet Google Analytics</p>
+      <p>Wenn dir dieses Tool hilft — <a href="https://ko-fi.com/cyocun" target="_blank" rel="noopener">buy me a coffee!</a></p>
     </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
