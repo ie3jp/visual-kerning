@@ -17,6 +17,14 @@ import {
   type KerningExport,
 } from './applyKerning'
 import {
+  collectBreakPositions,
+  getCharSpans,
+  getFontInfo,
+  isOurWrapped,
+} from './kerningEditorDom'
+import { createKeyboardController } from './kerningEditorKeyboard'
+import { createMouseController } from './kerningEditorMouse'
+import {
   LOG_PREFIX,
   TOOL_NAME,
   loadPersistedData,
@@ -25,33 +33,23 @@ import {
   seedPersistedKerningData,
 } from './kerningEditorStorage'
 import {
-  findGapIndex,
   getGapRect,
   getSelectionGapRects,
-  isLineBreakGap,
-  moveCursorVertically,
   type CursorRect,
 } from './kerningEditorMath'
+import { generateSelector } from './cssSelector'
+import { createSelectionController } from './kerningEditorSelection'
+import {
+  derivedValueBox,
+  valueBox,
+  watchedValueBox,
+  type ValueBox,
+} from './reactiveValue'
 import { createTypedEventEmitter, type TypedEventEmitter } from './typedEventEmitter'
 import type { PersistedKerningArea } from './validation'
 
 export { LOG_PREFIX, STORAGE_KEY, TOOL_NAME } from './kerningEditorStorage'
-
-export interface ValueBox<T> {
-  value: T
-}
-
-function valueBox<T>(initial: T): ValueBox<T> {
-  return { value: initial }
-}
-
-function watchedValueBox<T>(initial: T, onChange: () => void): ValueBox<T> {
-  let _v = initial
-  return {
-    get value() { return _v },
-    set value(v: T) { _v = v; onChange() },
-  }
-}
+export type { ValueBox } from './reactiveValue'
 
 export interface KerningChangeDetail {
   selector: string
@@ -141,19 +139,6 @@ function toPersistedData(areas: Map<string, VisualKerningArea>): Record<string, 
   return data
 }
 
-function getFontInfo(el: Element): KerningArea['font'] {
-  const cs = getComputedStyle(el)
-  return {
-    family: cs.fontFamily,
-    weight: cs.fontWeight,
-    size: cs.fontSize,
-  }
-}
-
-function getCharSpans(el: Element): HTMLElement[] {
-  return Array.from(el.querySelectorAll(`.${CHAR_CLASS}`)) as HTMLElement[]
-}
-
 function wrapText(el: HTMLElement, kerning: number[], indent = 0): { brPositions: number[] } {
   const { brPositions } = wrapElementWithKerning(el, kerning, {
     indent,
@@ -162,108 +147,8 @@ function wrapText(el: HTMLElement, kerning: number[], indent = 0): { brPositions
   return { brPositions }
 }
 
-function collectBreakPositions(el: Element): number[] {
-  const brPositions: number[] = []
-  let spanIndex = 0
-
-  function walk(node: Node) {
-    for (const child of Array.from(node.childNodes)) {
-      if (child.nodeType !== Node.ELEMENT_NODE) continue
-
-      const childEl = child as HTMLElement
-      if (childEl.tagName === 'BR') {
-        brPositions.push(spanIndex)
-        continue
-      }
-
-      if (childEl.tagName === 'SPAN' && childEl.classList.contains(CHAR_CLASS)) {
-        spanIndex++
-      }
-
-      walk(childEl)
-    }
-  }
-
-  walk(el)
-  return brPositions
-}
-
 function restoreOriginalText(el: HTMLElement, originalHTML: string) {
   el.innerHTML = originalHTML
-}
-
-const INLINE_TAGS = new Set([
-  'A', 'SPAN', 'EM', 'STRONG', 'B', 'I', 'SMALL',
-  'MARK', 'ABBR', 'CODE', 'TIME', 'SUB', 'SUP',
-])
-const IGNORE_SELECTOR = '[data-visual-kerning-ignore], [data-typespacing-ignore]'
-
-function isInlineContent(el: Element): boolean {
-  for (const node of Array.from(el.childNodes)) {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const tag = (node as Element).tagName
-      if (tag === 'BR') continue
-      if (INLINE_TAGS.has(tag) && isInlineContent(node as Element)) continue
-      return false
-    }
-  }
-  return true
-}
-
-function isTextLeaf(el: Element): boolean {
-  const text = el.textContent || ''
-  if (text.trim().length < 2) return false
-  return isInlineContent(el)
-}
-
-function isOurWrapped(el: Element): boolean {
-  const wrapped = getSingleCharSpans(el)
-  if (!wrapped) return false
-  return wrapped.every(span => span.classList.contains(CHAR_CLASS))
-}
-
-function generateSelector(el: Element): string {
-  const parts: string[] = []
-  let current: Element | null = el
-
-  while (current && current !== document.documentElement) {
-    if (current === document.body) {
-      parts.unshift('body')
-      break
-    }
-    if (current.id) {
-      parts.unshift(`#${CSS.escape(current.id)}`)
-      break
-    }
-
-    let part = current.tagName.toLowerCase()
-    const classes = Array.from(current.classList).filter(c => !c.startsWith('visual-kerning-'))
-    if (classes.length) {
-      part += classes.map(c => `.${CSS.escape(c)}`).join('')
-    }
-
-    if (current.parentElement) {
-      const sameTag = Array.from(current.parentElement.children).filter(s => s.tagName === current!.tagName)
-      if (sameTag.length > 1) {
-        const idx = Array.from(current.parentElement.children).indexOf(current) + 1
-        part += `:nth-child(${idx})`
-      }
-    }
-
-    parts.unshift(part)
-    current = current.parentElement
-  }
-
-  const full = parts.join(' > ')
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const short = parts.slice(i).join(' > ')
-    try {
-      if (document.querySelectorAll(short).length === 1) return short
-    } catch {
-      // ignore invalid selector candidates
-    }
-  }
-  return full
 }
 
 export function createVisualKerningPlugin(): VisualKerningPlugin {
@@ -280,36 +165,40 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
   const selectionRange = valueBox<SelectionRange | null>(null)
   const cursorValue = valueBox(0)
   const gapMarkers = valueBox<GapMarker[]>([])
-  const modifiedCount: ValueBox<number> = {
-    get value() {
-      return Array.from(areas.value.values()).filter(area => isAreaModified(area)).length
-    },
-    set value(_) { /* read-only */ },
+  const modifiedCount = derivedValueBox(
+    () => Array.from(areas.value.values()).filter(area => isAreaModified(area)).length,
+  )
+
+  const selection = createSelectionController({ cursorGap, cursorGapEnd })
+  const { hasSelection, getSelectionBounds, collapseSelection, adjustableGapIndices } = selection
+
+  function gapValue(area: VisualKerningArea, gap: number): number {
+    return gap === -1 ? area.indent : (area.kerning[gap] ?? 0)
   }
 
-  // Mouse drag state
-  let isDragging = false
-  let dragStartX = 0
-  let dragStartY = 0
-  let dragTextEl: HTMLElement | null = null
-  const DRAG_THRESHOLD = 3
-
-  function hasSelection(): boolean {
-    return cursorGapEnd.value !== null && cursorGapEnd.value !== cursorGap.value
+  function syncModifiedFlag(area: VisualKerningArea) {
+    if (isAreaModified(area)) area.el.classList.add(MODIFIED_CLASS)
+    else area.el.classList.remove(MODIFIED_CLASS)
   }
 
-  function getSelectionBounds(): [number, number] | null {
-    if (cursorGapEnd.value === null) return null
-    const a = cursorGap.value, b = cursorGapEnd.value
-    return a <= b ? [a, b] : [b, a]
+  function emitSelect() {
+    emitter.emit('select', {
+      selector: activeSelector.value,
+      gapIndex: cursorGap.value,
+      gapIndexEnd: cursorGapEnd.value,
+    })
   }
 
-  function collapseSelection(side: 'start' | 'end') {
-    if (!hasSelection()) return
-    const bounds = getSelectionBounds()
-    if (!bounds) return
-    cursorGap.value = side === 'start' ? bounds[0] : bounds[1]
-    cursorGapEnd.value = null
+  function emitAreaChange(area: VisualKerningArea) {
+    emitter.emit('change', {
+      selector: area.selector,
+      kerning: [...area.kerning],
+      indent: area.indent,
+    })
+  }
+
+  function persistAreas() {
+    savePersistedData(toPersistedData(areas.value))
   }
 
   function deactivate() {
@@ -348,18 +237,18 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
       }
       selectionRange.value = rects.length > 0 ? { rects } : null
       cursorRect.value = null
-      // 範囲選択時の表示値: 各ギャップ値の平均
-      let sum = 0
-      let count = 0
-      for (let i = bounds[0]; i <= bounds[1]; i++) {
-        sum += i === -1 ? area.indent : (area.kerning[i] ?? 0)
-        count++
+      // 範囲選択時の表示値: 調整対象ギャップの平均（操作と表示を一致させる）
+      const indices = adjustableGapIndices(bounds, spans)
+      if (indices.length > 0) {
+        const sum = indices.reduce((acc, i) => acc + gapValue(area, i), 0)
+        cursorValue.value = Math.round(sum / indices.length)
+      } else {
+        cursorValue.value = 0
       }
-      cursorValue.value = count > 0 ? Math.round(sum / count) : 0
     } else {
       selectionRange.value = null
       cursorRect.value = getGapRect(spans, gap)
-      cursorValue.value = gap === -1 ? area.indent : (area.kerning[gap] ?? 0)
+      cursorValue.value = gapValue(area, gap)
     }
     updateGapMarkers()
   }
@@ -457,323 +346,48 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     }
   }
 
-  function findTextElement(target: Element): HTMLElement | null {
-    const isIgnored = (el: Element) => !!el.closest(IGNORE_SELECTOR)
+  const mouseController = createMouseController({
+    overlayClass: OVERLAY_CLASS,
+    enabled,
+    activeSelector,
+    cursorGap,
+    cursorGapEnd,
+    areas,
+    ensureEditableArea,
+    applyAreaPreview,
+    updateCursor,
+    deactivate,
+    emitSelect,
+  })
 
-    const charSpan = target.closest(`.${CHAR_CLASS}`)
-    if (charSpan) {
-      // visual-kerning-char からインラインラッパーを越えて実際のテキストコンテナまで遡る
-      let container = charSpan.parentElement
-      while (container && INLINE_TAGS.has(container.tagName)) {
-        container = container.parentElement
-      }
-      if (container) return container as HTMLElement
-    }
-
-    if (isTextLeaf(target) && !isIgnored(target)) {
-      return target as HTMLElement
-    }
-
-    let current: Element | null = target
-    while (current && current !== document.body) {
-      if (!isIgnored(current) && (isTextLeaf(current) || isOurWrapped(current))) {
-        return current as HTMLElement
-      }
-      current = current.parentElement
-    }
-    return null
-  }
-
-  function onSelectStart(e: Event) {
-    e.preventDefault()
-  }
-
-  function removeDragListeners() {
-    window.removeEventListener('mousemove', onMouseMove)
-    window.removeEventListener('mouseup', onMouseUp)
-    document.removeEventListener('selectstart', onSelectStart)
-    isDragging = false
-    dragTextEl = null
-  }
-
-  function onMouseDown(e: MouseEvent) {
-    if (!enabled.value) return
-    if (e.button !== 0) return
-
-    const rawTarget = e.target as Node
-    const target = rawTarget.nodeType === Node.TEXT_NODE ? rawTarget.parentElement : rawTarget as Element
-    if (!target) return
-    if (target.closest(`.${OVERLAY_CLASS}`) || target.closest('svg')) return
-    if (target.closest(IGNORE_SELECTOR)) return
-
-    const textEl = findTextElement(target)
-    if (!textEl) {
+  function toggleEnabled() {
+    enabled.value = !enabled.value
+    if (enabled.value) {
+      emitter.emit('enable', undefined)
+    } else {
+      setCompareMode(false)
       deactivate()
-      return
-    }
-
-    e.preventDefault()
-    e.stopPropagation()
-
-    const selector = generateSelector(textEl)
-    ensureEditableArea(textEl, selector)
-    const currentArea = areas.value.get(selector)
-    if (currentArea) applyAreaPreview(currentArea)
-
-    if (activeSelector.value && activeSelector.value !== selector) {
-      const prev = areas.value.get(activeSelector.value)
-      if (prev) prev.el.classList.remove(ACTIVE_CLASS)
-    }
-
-    textEl.classList.add(ACTIVE_CLASS)
-    const clickedGap = findGapIndex(getCharSpans(textEl), e.clientX, e.clientY)
-
-    if (e.shiftKey && activeSelector.value === selector && cursorGap.value >= -1) {
-      // Shift+クリック: 現在位置から範囲拡張
-      cursorGapEnd.value = clickedGap
-      updateCursor()
-      emitter.emit('select', {
-        selector: activeSelector.value,
-        gapIndex: cursorGap.value,
-        gapIndexEnd: cursorGapEnd.value,
-      })
-      // Shift+ドラッグでさらに拡張できるようリスナーを登録
-      removeDragListeners()
-      dragTextEl = textEl
-      isDragging = true
-      window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('mouseup', onMouseUp)
-      document.addEventListener('selectstart', onSelectStart)
-      return
-    }
-
-    // カーソル位置を設定
-    activeSelector.value = selector
-    cursorGap.value = clickedGap
-    cursorGapEnd.value = null
-    updateCursor()
-
-    // ドラッグ追跡を開始（removeDragListeners が dragTextEl をクリアするため先に呼ぶ）
-    removeDragListeners()
-    dragStartX = e.clientX
-    dragStartY = e.clientY
-    dragTextEl = textEl
-    isDragging = false
-
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-    document.addEventListener('selectstart', onSelectStart)
-  }
-
-  function onMouseMove(e: MouseEvent) {
-    if (!dragTextEl) return
-
-    if (!isDragging) {
-      const dx = e.clientX - dragStartX
-      const dy = e.clientY - dragStartY
-      if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return
-      isDragging = true
-    }
-
-    const spans = getCharSpans(dragTextEl)
-    let stickyLineY: number | undefined
-    if (cursorGapEnd.value !== null) {
-      const prevRect = getGapRect(spans, cursorGapEnd.value)
-      if (prevRect) stickyLineY = prevRect.y + prevRect.h / 2
-    }
-    const gapIndex = findGapIndex(spans, e.clientX, e.clientY, stickyLineY)
-    cursorGapEnd.value = gapIndex
-    updateCursor()
-  }
-
-  function onMouseUp(e: MouseEvent) {
-    if (e.button !== 0) return
-    removeDragListeners()
-
-    // ゼロ幅選択を解消
-    if (cursorGapEnd.value !== null && cursorGapEnd.value === cursorGap.value) {
-      cursorGapEnd.value = null
-      updateCursor()
-    }
-
-    emitter.emit('select', {
-      selector: activeSelector.value,
-      gapIndex: cursorGap.value,
-      gapIndexEnd: cursorGapEnd.value,
-    })
-  }
-
-  function onKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault()
-      enabled.value = !enabled.value
-      if (enabled.value) {
-        emitter.emit('enable', undefined)
-      } else {
-        setCompareMode(false)
-        deactivate()
-        emitter.emit('disable', undefined)
-      }
-      return
-    }
-
-    if (!enabled.value) return
-    if (e.key === 'Escape') {
-      deactivate()
-      return
-    }
-
-    // Cmd+A: アクティブ要素内の全ギャップを選択
-    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-      const selector = activeSelector.value
-      if (!selector || cursorGap.value < -1) return
-      e.preventDefault()
-      e.stopPropagation()
-      const area = areas.value.get(selector)
-      if (!area) return
-      cursorGap.value = -1
-      cursorGapEnd.value = area.kerning.length - 1
-      updateCursor()
-      emitter.emit('select', {
-        selector: activeSelector.value,
-        gapIndex: cursorGap.value,
-        gapIndexEnd: cursorGapEnd.value,
-      })
-      return
-    }
-
-    // Cmd+Alt+Q: 選択中のギャップをゼロにリセット
-    if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === 'q') {
-      const selector = activeSelector.value
-      if (!selector || cursorGap.value < -1) return
-      e.preventDefault()
-      e.stopPropagation()
-      const area = areas.value.get(selector)
-      if (!area) return
-      const spans = getCharSpans(area.el)
-      const bounds = getSelectionBounds()
-      if (bounds) {
-        for (let i = bounds[0]; i <= bounds[1]; i++) {
-          if (i === -1) area.indent = 0
-          else area.kerning[i] = 0
-        }
-      } else {
-        const idx = cursorGap.value
-        if (idx === -1) area.indent = 0
-        else area.kerning[idx] = 0
-      }
-      applyKerningToSpans(spans, area.kerning, area.indent)
-      if (isAreaModified(area)) area.el.classList.add(MODIFIED_CLASS)
-      else area.el.classList.remove(MODIFIED_CLASS)
-      updateCursor()
-      savePersistedData(toPersistedData(areas.value))
-      emitter.emit('change', { selector, kerning: [...area.kerning], indent: area.indent })
-      return
-    }
-
-    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-      const selector = activeSelector.value
-      if (!selector || cursorGap.value < -1) return
-
-      e.preventDefault()
-      e.stopPropagation()
-
-      const area = areas.value.get(selector)
-      if (!area) return
-
-      const step = (e.metaKey || e.ctrlKey) ? 100 : e.shiftKey ? 1 : 10
-      const delta = e.key === 'ArrowRight' ? step : -step
-      const spans = getCharSpans(area.el)
-
-      const bounds = getSelectionBounds()
-      if (bounds) {
-        // 範囲選択: 内側ギャップのみ同量調整（トラッキング）
-        // bounds[0] は選択外との左端エッジなのでスキップ
-        // 改行直後のギャップ（行頭）もスキップ
-        for (let i = bounds[0] + 1; i <= bounds[1]; i++) {
-          if (isLineBreakGap(spans, i)) continue
-          if (i === -1) {
-            area.indent += delta
-          } else {
-            area.kerning[i] = (area.kerning[i] ?? 0) + delta
-          }
-        }
-      } else {
-        // 単一ギャップ: カーニング
-        const idx = cursorGap.value
-        if (idx === -1) {
-          area.indent += delta
-        } else {
-          area.kerning[idx] = (area.kerning[idx] ?? 0) + delta
-        }
-      }
-
-      applyKerningToSpans(spans, area.kerning, area.indent)
-      if (compareMode.value) {
-        applyKerningToSpans(spans, new Array(area.kerning.length).fill(0), 0)
-      }
-      area.el.classList.add(MODIFIED_CLASS)
-      updateCursor()
-      savePersistedData(toPersistedData(areas.value))
-      emitter.emit('change', { selector, kerning: [...area.kerning], indent: area.indent })
-      return
-    }
-
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab')
-      && activeSelector.value && cursorGap.value >= -1) {
-      e.preventDefault()
-      const area = areas.value.get(activeSelector.value)
-      if (!area) return
-      const minGap = -1
-      const maxGap = area.kerning.length - 1
-      const back = e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)
-
-      if (e.shiftKey && e.key !== 'Tab') {
-        // Shift+矢印: 範囲拡張
-        const end = cursorGapEnd.value ?? cursorGap.value
-        const next = back
-          ? (end > minGap ? end - 1 : end)
-          : (end < maxGap ? end + 1 : end)
-        cursorGapEnd.value = next
-      } else if (hasSelection() && !e.shiftKey) {
-        // 範囲選択中に矢印（Shiftなし）: 範囲を解除してその端にカーソルを置く
-        collapseSelection(back ? 'start' : 'end')
-      } else {
-        cursorGap.value = back
-          ? (cursorGap.value > minGap ? cursorGap.value - 1 : maxGap)
-          : (cursorGap.value < maxGap ? cursorGap.value + 1 : minGap)
-      }
-      updateCursor()
-      return
-    }
-
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown')
-      && activeSelector.value && cursorGap.value >= -1 && !e.altKey) {
-      e.preventDefault()
-      const area = areas.value.get(activeSelector.value)
-      if (!area) return
-      const spans = getCharSpans(area.el)
-      const direction = e.key === 'ArrowUp' ? 'up' : 'down'
-
-      if (e.shiftKey) {
-        // Shift+上下矢印: 範囲拡張
-        const end = cursorGapEnd.value ?? cursorGap.value
-        cursorGapEnd.value = moveCursorVertically(spans, end, direction)
-      } else if (hasSelection()) {
-        // 範囲選択中に上下矢印（Shiftなし）: 範囲を解除してその端にカーソルを置く
-        collapseSelection(direction === 'up' ? 'start' : 'end')
-      } else {
-        cursorGap.value = moveCursorVertically(spans, cursorGap.value, direction)
-      }
-      updateCursor()
-      return
-    }
-
-    if (!e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'b') {
-      e.preventDefault()
-      toggleCompareMode()
+      emitter.emit('disable', undefined)
     }
   }
+
+  const keyboardController = createKeyboardController({
+    enabled,
+    activeSelector,
+    cursorGap,
+    cursorGapEnd,
+    areas,
+    selection,
+    applyAreaPreview,
+    syncModifiedFlag,
+    toggleEnabled,
+    toggleCompareMode,
+    updateCursor,
+    deactivate,
+    emitSelect,
+    emitAreaChange,
+    persistAreas,
+  })
 
   function onScrollOrResize() {
     if (cursorRect.value || selectionRange.value) updateCursor()
@@ -893,8 +507,8 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     resetAll,
     importJSON,
     mount() {
-      window.addEventListener('mousedown', onMouseDown, true)
-      window.addEventListener('keydown', onKeydown, true)
+      mouseController.attach()
+      keyboardController.attach()
       window.addEventListener('scroll', onScrollOrResize, true)
       window.addEventListener('resize', onScrollOrResize)
       return new Promise<void>((resolve) => {
@@ -906,10 +520,9 @@ export function createVisualKerningPlugin(): VisualKerningPlugin {
     },
     unmount() {
       window.clearTimeout(loadTimerId)
-      removeDragListeners()
+      mouseController.detach()
+      keyboardController.detach()
       deactivate()
-      window.removeEventListener('mousedown', onMouseDown, true)
-      window.removeEventListener('keydown', onKeydown, true)
       window.removeEventListener('scroll', onScrollOrResize, true)
       window.removeEventListener('resize', onScrollOrResize)
       const wasEnabled = enabled.value

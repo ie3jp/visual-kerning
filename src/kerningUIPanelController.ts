@@ -77,7 +77,6 @@ export function createKerningUIPanelController(options: PanelControllerOptions):
     const { left, top } = toLeftTop(panelRight, panelBottom)
     const newLeft = event.clientX - dragOffsetX
     const newTop = event.clientY - dragOffsetY
-    const { width, height } = getPanelSize()
     panelRight += left - newLeft
     panelBottom += top - newTop
     syncPanelPosition()

@@ -33,8 +33,8 @@ describe('visualKerning', () => {
     window.cancelAnimationFrame = vi.fn()
 
     const editor = visualKerning({ locale: 'en' })
-    editor.plugin.enabled.value = true
-    editor.plugin.gapMarkers.value = [{ x: 10, y: 20, h: 30, value: 40 }]
+    editor.enabled.value = true
+    editor.gapMarkers.value = [{ x: 10, y: 20, h: 30, value: 40 }]
 
     editor.mount()
     flushAnimationFrame()
@@ -79,7 +79,7 @@ describe('visualKerning', () => {
     vi.runAllTimers()
     flushAnimationFrame()
 
-    editor.plugin.resetAll()
+    editor.resetAll()
 
     expect(document.querySelector('#title')?.innerHTML).toBe('Type <em>Spacing</em>')
 
@@ -96,7 +96,7 @@ describe('visualKerning', () => {
     window.cancelAnimationFrame = vi.fn()
 
     const editor = visualKerning({ locale: 'en' })
-    editor.plugin.enabled.value = true
+    editor.enabled.value = true
     editor.mount()
     flushAnimationFrame()
 

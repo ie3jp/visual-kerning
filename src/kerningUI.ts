@@ -85,9 +85,11 @@ export interface VisualKerningOptions {
   accessible?: boolean
 }
 
-export interface VisualKerning extends VisualKerningPlugin {
-  plugin: VisualKerningPlugin
-}
+/**
+ * エディタのトップ API。`VisualKerningPlugin` のメソッド/状態に加え、
+ * UI の `mount`/`unmount` をオーバーライドする。
+ */
+export interface VisualKerning extends VisualKerningPlugin {}
 
 export function visualKerning(options: VisualKerningOptions = {}): VisualKerning {
   const plugin = createVisualKerningPlugin()
@@ -370,7 +372,6 @@ export function visualKerning(options: VisualKerningOptions = {}): VisualKerning
 
   const editor: VisualKerning = {
     ...plugin,
-    plugin,
     mount() {
       if (document.readyState === 'loading') {
         if (!pendingDomReady) {

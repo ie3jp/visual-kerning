@@ -6,7 +6,7 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
   // ツアーのイントロ待ちをスキップしてエディタを即座に有効化
   await page.waitForFunction(() => (window as any).__kerningDemo)
   await page.evaluate(() => {
-    ;(window as any).__kerningDemo.plugin.enabled.value = true
+    ;(window as any).__kerningDemo.enabled.value = true
   })
 
   await expect
@@ -53,13 +53,19 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
 
   const panel = page.locator('.js-panel')
   const panelBody = page.locator('.js-panel-body')
-  const panelBefore = await panel.boundingBox()
-  if (!panelBefore) throw new Error('Panel not found')
 
   await page.locator('.js-collapse').click()
   await expect(panelBody).toBeHidden()
   await page.locator('.js-collapse').click()
   await expect(panelBody).toBeVisible()
+
+  // setCollapsed が rAF 経由でパネル位置を同期するので、描画完了を待ってから基準を取る
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve(null)))
+  }))
+
+  const panelBefore = await panel.boundingBox()
+  if (!panelBefore) throw new Error('Panel not found')
 
   const handle = page.locator('.js-drag-handle')
   const handleBox = await handle.boundingBox()
@@ -68,6 +74,15 @@ test('editor supports compare, collapsing, dragging, and modified highlight', as
   await page.mouse.down()
   await page.mouse.move(handleBox.x + handleBox.width / 2 - 80, handleBox.y + handleBox.height / 2 - 60, { steps: 8 })
   await page.mouse.up()
+
+  // ドラッグ移動量が反映されるまで待つ（並列ワーカー下でのレース回避）
+  await expect
+    .poll(async () => {
+      const box = await panel.boundingBox()
+      if (!box) return 0
+      return Math.max(Math.abs(box.x - panelBefore.x), Math.abs(box.y - panelBefore.y))
+    }, { timeout: 2000 })
+    .toBeGreaterThan(20)
 
   const panelAfter = await panel.boundingBox()
   if (!panelAfter) throw new Error('Panel not found after drag')

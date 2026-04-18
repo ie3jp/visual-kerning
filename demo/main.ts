@@ -84,7 +84,7 @@ const editor = visualKerning({ locale: m.editorLocale })
 editor.mount()
 
 if (localStorage.getItem(TUTORIAL_DONE_KEY)) {
-  editor.plugin.enabled.value = true
+  editor.enabled.value = true
 }
 
 const isMac = navigator.platform.includes('Mac')
@@ -93,9 +93,9 @@ const tutorialContent = m.tutorialContent({ isMac, altKey })
 
 const tour = createTour({
   doneKey: TUTORIAL_DONE_KEY,
-  steps: buildTutorialSteps((handler) => editor.plugin.on('enable', handler), tutorialContent),
+  steps: buildTutorialSteps((handler) => editor.on('enable', handler), tutorialContent),
   onBeforeReplay: () => simulateCmdK(),
-  onDone: () => { editor.plugin.enabled.value = true },
+  onDone: () => { editor.enabled.value = true },
   ignoreAttr: 'data-visual-kerning-ignore',
   skipLabel: m.skipLabel,
   replayLabel: m.replayLabel,
@@ -115,7 +115,7 @@ window.addEventListener('beforeunload', (e) => {
 })
 
 function exportAndReset() {
-  const json = JSON.stringify(editor.plugin.exportJSON(), null, 2)
+  const json = JSON.stringify(editor.exportJSON(), null, 2)
   localStorage.removeItem(STORAGE_KEY)
   localStorage.removeItem(IMPORTED_KEY)
   return json
@@ -471,7 +471,7 @@ function updatePreviewStyle() {
 }
 
 function resetPreviewArea() {
-  const areas = editor.plugin.areas.value
+  const areas = editor.areas.value
   for (const [selector, area] of areas) {
     if (area.el === preview) {
       area.el.classList.remove(ACTIVE_CLASS, MODIFIED_CLASS)

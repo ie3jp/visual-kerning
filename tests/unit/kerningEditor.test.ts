@@ -122,6 +122,53 @@ describe('createVisualKerningPlugin persistence', () => {
     plugin.unmount()
   })
 
+  it('ignores shortcuts while focus is in an editable field', () => {
+    const h1 = document.createElement('h1')
+    h1.id = 'title'
+    h1.textContent = 'AV'
+    const input = document.createElement('input')
+    input.id = 'user-input'
+    document.body.append(h1, input)
+
+    const plugin = createVisualKerningPlugin()
+    plugin.mount()
+    plugin.enabled.value = true
+
+    input.focus()
+
+    // B キーはフォーカス先が input なので Compare に切り替わらない
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'b',
+      bubbles: true,
+    }))
+    expect(plugin.compareMode.value).toBe(false)
+
+    // Cmd+K はフォーカス先に関わらず常に有効（エディタ自体の起動/停止のため）
+    input.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+    }))
+    expect(plugin.enabled.value).toBe(false)
+
+    plugin.unmount()
+  })
+
+  it('does not toggle compare mode on Shift+B', () => {
+    const plugin = createVisualKerningPlugin()
+    plugin.mount()
+    plugin.enabled.value = true
+
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'B',
+      shiftKey: true,
+      bubbles: true,
+    }))
+    expect(plugin.compareMode.value).toBe(false)
+
+    plugin.unmount()
+  })
+
   it('still respects the legacy ignore attribute', () => {
     document.body.innerHTML = '<div data-typespacing-ignore><p id="title">AV</p></div>'
     const plugin = createVisualKerningPlugin()
